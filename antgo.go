@@ -1,8 +1,8 @@
-package antgo
+package main
 
 import (
 	"log"
-	"fmt"
+	"time"
 )
 
 func main() {
@@ -16,7 +16,5 @@ func main() {
 
 	defer dongle.Close()
 
-	c:= <- dongle.Read
-
-	fmt.Println(c)
+	time.Sleep(time.Second * 2)
 }

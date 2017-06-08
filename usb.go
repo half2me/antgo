@@ -1,4 +1,4 @@
-package antgo
+package main
 
 import (
 	"github.com/kylelemons/gousb/usb"
@@ -23,8 +23,11 @@ type UsbDevice struct {
 
 func (dev *UsbDevice) Open() (e error) {
 	log.Println("Opening device")
+	dev.Read = make(chan []byte, 20)
+	dev.Write = make(chan []byte, 20)
+
 	dev.context = usb.NewContext()
-	dev.context.Debug(3)
+	dev.context.Debug(0)
 
 	dev.device, e = dev.context.OpenDeviceWithVidPid(dev.vid, dev.pid)
 
@@ -52,9 +55,6 @@ func (dev *UsbDevice) Open() (e error) {
 		return
 	}
 
-	dev.Read = make(chan []byte)
-	dev.Write = make(chan []byte)
-
 	go dev.loop()
 
 	log.Println("Device opened")
@@ -64,8 +64,8 @@ func (dev *UsbDevice) Open() (e error) {
 
 func (dev *UsbDevice) Close() {
 	log.Println("Closing device")
-	dev.stopLoop <- 1
 	close(dev.Read)
+	dev.stopLoop <- 1
 
 	if dev.device != nil {
 		dev.device.Close()
@@ -82,27 +82,22 @@ func (dev *UsbDevice) loop() {
 	for {
 		select {
 		case <- dev.stopLoop:
-			break
+			log.Println("Stopping loop")
+			return
 		case d := <- dev.Write:
 			dev.out.Write(d)
 		default:
 			// Read from device
 			buf := make([]byte, 20)
-			_, err := dev.in.Read(buf)
-
-			if ! (err == nil || err == usb.ERROR_TIMEOUT) {
-				log.Fatalln("Error reading from endpoint, ", err)
-				close(dev.Read)
-				break;
-			}
+			dev.in.Read(buf)
 		}
 	}
-	log.Println("Loop stopped")
 }
 
 func GetDevice(vid, pid int) *UsbDevice {
 	return &UsbDevice{
 		vid: vid,
 		pid: pid,
+		stopLoop: make(chan int),
 	}
 }
