@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"fmt"
+	"time"
 )
 
 func read(r chan []byte) {
@@ -24,7 +25,7 @@ func main() {
 
 	go read(dongle.Read)
 
-	rst := makeSystemResetMessage()
-	fmt.Println(rst.String())
-	dongle.Write <- rst
+	dongle.StartRxScanMode()
+
+	time.Sleep(time.Second * 20)
 }

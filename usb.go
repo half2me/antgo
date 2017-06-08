@@ -6,11 +6,6 @@ import (
 	"errors"
 )
 
-type Device interface {
-	Open(c chan byte) error
-	Close()
-}
-
 type UsbDevice struct {
 	vid, pid int
 	context  *usb.Context
@@ -23,7 +18,7 @@ type UsbDevice struct {
 
 func (dev *UsbDevice) Open() (e error) {
 	log.Println("Opening device")
-	dev.Read = make(chan []byte, 20)
+	dev.Read = make(chan []byte)
 	dev.Write = make(chan []byte)
 
 	dev.context = usb.NewContext()
@@ -64,7 +59,6 @@ func (dev *UsbDevice) Open() (e error) {
 
 func (dev *UsbDevice) Close() {
 	log.Println("Closing device")
-	close(dev.Read)
 	dev.stopLoop <- 1
 
 	if dev.device != nil {
@@ -77,18 +71,30 @@ func (dev *UsbDevice) Close() {
 	log.Println("Device closed")
 }
 
+func (dev *UsbDevice) StartRxScanMode() {
+	dev.Write <- makeSystemResetMessage()
+	dev.Write <- makeSetNetworkKeyMessage(0, []byte(ANTPLUS_NETWORK_KEY))
+	dev.Write <- makeAssignChannelMessage(0, CHANNEL_TYPE_ONEWAY_RECEIVE)
+	dev.Write <- makeSetChannelIdMessage(0)
+	dev.Write <- makeSetChannelRfFrequencyMessage(0, 2457)
+	dev.Write <- makeEnableExtendedMessagesMessage(true)
+	dev.Write <- makeLibConfigMessage(true, true, true)
+	dev.Write <- makeOpenRxScanModeMessage()
+}
+
 func (dev *UsbDevice) loop() {
 	log.Println("Loop started")
 	for {
 		select {
 		case <- dev.stopLoop:
 			log.Println("Stopping loop")
+			close(dev.Read)
 			return
 		case d := <- dev.Write:
 			dev.out.Write(d)
 		default:
 			// Read from device
-			buf := make([]byte, 20)
+			buf := make([]byte, 64)
 			i, err := dev.in.Read(buf)
 
 			if err == nil {
