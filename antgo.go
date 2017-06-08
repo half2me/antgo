@@ -2,7 +2,7 @@ package main
 
 import (
 	"log"
-	"time"
+	"fmt"
 )
 
 func main() {
@@ -16,5 +16,9 @@ func main() {
 
 	defer dongle.Close()
 
-	time.Sleep(time.Second * 2)
+	rst := makeSystemResetMessage()
+	fmt.Println(rst.String())
+	dongle.Write <- rst
+	c := <- dongle.Read
+	fmt.Println(AntPacket(c).String())
 }

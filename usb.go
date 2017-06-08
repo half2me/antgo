@@ -24,7 +24,7 @@ type UsbDevice struct {
 func (dev *UsbDevice) Open() (e error) {
 	log.Println("Opening device")
 	dev.Read = make(chan []byte, 20)
-	dev.Write = make(chan []byte, 20)
+	dev.Write = make(chan []byte)
 
 	dev.context = usb.NewContext()
 	dev.context.Debug(0)
@@ -85,11 +85,16 @@ func (dev *UsbDevice) loop() {
 			log.Println("Stopping loop")
 			return
 		case d := <- dev.Write:
+			log.Println("Writing data: ", d)
 			dev.out.Write(d)
 		default:
 			// Read from device
 			buf := make([]byte, 20)
-			dev.in.Read(buf)
+			i, err := dev.in.Read(buf)
+
+			if err == nil {
+				dev.Read <- buf[:i]
+			}
 		}
 	}
 }
