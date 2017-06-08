@@ -85,7 +85,6 @@ func (dev *UsbDevice) loop() {
 			log.Println("Stopping loop")
 			return
 		case d := <- dev.Write:
-			log.Println("Writing data: ", d)
 			dev.out.Write(d)
 		default:
 			// Read from device
