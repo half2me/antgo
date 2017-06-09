@@ -1,9 +1,11 @@
-package main
+package driver
 
 import (
 	"github.com/kylelemons/gousb/usb"
 	"log"
 	"errors"
+	"github.com/half2me/antgo/message"
+	"github.com/half2me/antgo/constants"
 )
 
 type UsbDevice struct {
@@ -11,16 +13,16 @@ type UsbDevice struct {
 	context  *usb.Context
 	device   *usb.Device
 	in, out  usb.Endpoint
-	Read chan []byte
-	Write chan []byte
+	Read chan message.AntPacket
+	Write chan message.AntPacket
 	decode chan byte
 	stopLoop chan int
 }
 
 func (dev *UsbDevice) Open() (e error) {
 	log.Println("Opening device")
-	dev.Read = make(chan []byte)
-	dev.Write = make(chan []byte)
+	dev.Read = make(chan message.AntPacket)
+	dev.Write = make(chan message.AntPacket)
 	dev.decode = make(chan byte)
 
 	dev.context = usb.NewContext()
@@ -75,14 +77,14 @@ func (dev *UsbDevice) Close() {
 }
 
 func (dev *UsbDevice) StartRxScanMode() {
-	dev.Write <- makeSystemResetMessage()
-	dev.Write <- makeSetNetworkKeyMessage(0, []byte(ANTPLUS_NETWORK_KEY))
-	dev.Write <- makeAssignChannelMessage(0, CHANNEL_TYPE_ONEWAY_RECEIVE)
-	dev.Write <- makeSetChannelIdMessage(0)
-	dev.Write <- makeSetChannelRfFrequencyMessage(0, 2457)
-	dev.Write <- makeEnableExtendedMessagesMessage(true)
-	dev.Write <- makeLibConfigMessage(true, true, true)
-	dev.Write <- makeOpenRxScanModeMessage()
+	dev.Write <- message.SystemResetMessage()
+	dev.Write <- message.SetNetworkKeyMessage(0, []byte(constants.ANTPLUS_NETWORK_KEY))
+	dev.Write <- message.AssignChannelMessage(0, constants.CHANNEL_TYPE_ONEWAY_RECEIVE)
+	dev.Write <- message.SetChannelIdMessage(0)
+	dev.Write <- message.SetChannelRfFrequencyMessage(0, 2457)
+	dev.Write <- message.EnableExtendedMessagesMessage(true)
+	dev.Write <- message.LibConfigMessage(true, true, true)
+	dev.Write <- message.OpenRxScanModeMessage()
 }
 
 func (dev *UsbDevice) loop() {
@@ -121,7 +123,7 @@ func (dev *UsbDevice) decodeLoop() {
 			return
 		}
 
-		if sync != MESSAGE_TX_SYNC {
+		if sync != constants.MESSAGE_TX_SYNC {
 			continue
 		}
 
@@ -142,11 +144,11 @@ func (dev *UsbDevice) decodeLoop() {
 			}
 		}
 
-		dev.Read <- append([]byte{MESSAGE_TX_SYNC, length}, buf...)
+		dev.Read <- append(message.AntPacket{constants.MESSAGE_TX_SYNC, length}, buf...)
 	}
 }
 
-func GetDevice(vid, pid int) *UsbDevice {
+func GetUsbDevice(vid, pid int) *UsbDevice {
 	return &UsbDevice{
 		vid: vid,
 		pid: pid,
