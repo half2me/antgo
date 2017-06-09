@@ -1,10 +1,20 @@
 language: go
-go: 1.8.3
+go: 1.8.x
+
 os:
-- linux
-- osx
+  - osx
+
+env:
+  - CGO_ENABLED=1
+
+osx_image: xcode8.3
+
+before_install:
+  - brew update
+  - brew install libusb
+
 script:
-- go build -o bin/antgo -i .
+  - go build -o bin/antgo -i .
 deploy:
   provider: releases
   api_key:
