@@ -1,8 +1,17 @@
 language: go
 go: 1.8.3
-
-after_success:
-  - curl -sL https://git.io/goreleaser | bash
-
+os:
+- linux
+- osx
+script:
+- go build -o bin/antgo -i .
+deploy:
+  provider: releases
+  api_key:
+    secure: GYnaLQtdN5foT7XHzwnw7QHdO1+lYEG0SZ2C7CNhSkUISwMMbGJV/7NPw93SHbEvseeAAYKaAcQEM+o9B9DqpGx+VqqB7COLPCkKhDTakjWiKnFHZTsT1mWD6l4hsHSp/TGLBAn0xPolz9nPgw1IGOpWfx2WIopSZfLYSi/sJK8TjJvKagdv3OGw8xwcfo5ojW+3HcjOEn13jw2BZ844QQope96+qsuwNQEyWLlWwFXnEpSLGPhRATuKCibfxsPUNjU1ccDrga51VrJTwAxeXbPC//KPEAvH5I7PcmvhGywYGRFSa6lr3nfq8/MjiMvkZFs8q0CjiR/I/gFfecjx/DY3g0/6D7lpC6ShyMdLW+VOd2VxkSETpFbHC7Da7H2ZcdcBOFkiZVEf9/7jNsMltrc5+CILnrgvVJAHE5GD67pdWmhXHZhvtSNDcsItw0c8EC37KyVJ9N7E6sq19uSRBCacgMGXuh0f3iKcHM/8xUb660G/XpRqOcoCTDdxBrVclPXMCANRkpQ4xzaACe8T46LuT90xmEsIirH5yTH0mrVx0vQ82zDc0KwMI0+ApnjaiVegrI1RNmw/ieWe4wsG5oaN1cywoQh5COhJ1hcgw0wGJs+569ILF5FLN8NXBULKOXcrYQGPSY3Qh+dx2z1ByQg9sVg8cJY7sUgaAjSaTRM=
+  file: bin/antgo
+  on:
+    repo: half2me/antgo
+    tags: false
 notifications:
   email: false
