@@ -13,6 +13,7 @@ type UsbDevice struct {
 	in, out  usb.Endpoint
 	Read chan []byte
 	Write chan []byte
+	decode chan byte
 	stopLoop chan int
 }
 
@@ -20,6 +21,7 @@ func (dev *UsbDevice) Open() (e error) {
 	log.Println("Opening device")
 	dev.Read = make(chan []byte)
 	dev.Write = make(chan []byte)
+	dev.decode = make(chan byte)
 
 	dev.context = usb.NewContext()
 	dev.context.Debug(0)
@@ -51,6 +53,7 @@ func (dev *UsbDevice) Open() (e error) {
 	}
 
 	go dev.loop()
+	go dev.decodeLoop()
 
 	log.Println("Device opened")
 
@@ -84,11 +87,12 @@ func (dev *UsbDevice) StartRxScanMode() {
 
 func (dev *UsbDevice) loop() {
 	log.Println("Loop started")
+	defer close(dev.decode)
+	defer log.Println("Stopping loop")
+
 	for {
 		select {
 		case <- dev.stopLoop:
-			log.Println("Stopping loop")
-			close(dev.Read)
 			return
 		case d := <- dev.Write:
 			dev.out.Write(d)
@@ -98,9 +102,47 @@ func (dev *UsbDevice) loop() {
 			i, err := dev.in.Read(buf)
 
 			if err == nil {
-				dev.Read <- buf[:i]
+				for _, v := range buf[:i] {
+					dev.decode <- v
+				}
 			}
 		}
+	}
+}
+
+func (dev *UsbDevice) decodeLoop() {
+	defer close(dev.Read)
+
+	for {
+		// Wait for TX Sync
+		sync, ok := <- dev.decode
+
+		if !ok {
+			return
+		}
+
+		if sync != MESSAGE_TX_SYNC {
+			continue
+		}
+
+		// Get content length (+1byte type + 1byte checksum)
+		length, ok := <- dev.decode
+
+		if !ok {
+			return
+		}
+
+		buf := make([]byte, length+2)
+
+		for i := 0; i < int(length+2); i++ {
+			buf[i], ok = <- dev.decode
+
+			if !ok {
+				return
+			}
+		}
+
+		dev.Read <- append([]byte{MESSAGE_TX_SYNC, length}, buf...)
 	}
 }
 
