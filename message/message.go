@@ -3,18 +3,86 @@ package message
 import (
 	"fmt"
 	"github.com/half2me/antgo/constants"
+	"encoding/binary"
+	"bytes"
 )
 
 type AntPacket []byte
+type AntBroadcastMessage AntPacket
+type Rssi struct{
+	MeasurementType, Rssi, Threshold byte
+}
 
 func (p AntPacket) String() (s string) {
-	s = fmt.Sprintf("[%02X] [", p[2])
+	s = fmt.Sprintf("[%02X] [", p.Class())
 
-	for _, v := range p[3:len(p)-1] {
+	for _, v := range p.Data() {
 		s += fmt.Sprintf(" %02X ", v)
 	}
 
 	s += "]"
+	return
+}
+
+func (p AntPacket) Class() byte {
+	return p[2]
+}
+
+func (p AntPacket) Data() []byte {
+	return p[3:len(p)-1]
+}
+
+func (p AntBroadcastMessage) String() (s string) {
+	s = fmt.Sprintf("CH: %d ", p.Channel())
+	s += fmt.Sprintf("[%d] ", p.DeviceNumber())
+	s += fmt.Sprintf("[%s] ", constants.DeviceTypes[p.DeviceType()])
+
+	s += "["
+
+	for _, v := range p.Content() {
+		s += fmt.Sprintf(" %02X ", v)
+	}
+
+	s += "]"
+	return
+}
+
+func (p AntBroadcastMessage) Channel() uint8 {
+	return uint8(AntPacket(p).Data()[0])
+}
+
+func (p AntBroadcastMessage) Content() []byte {
+	return AntPacket(p).Data()[1:9]
+}
+
+func (p AntBroadcastMessage) ExtendedContent() []byte {
+	return AntPacket(p).Data()[10:]
+}
+
+func (p AntBroadcastMessage) DeviceNumber() (num uint16) {
+	binary.Read(bytes.NewReader(p.ExtendedContent()[:2]), binary.LittleEndian, &num)
+	return
+}
+
+func (p AntBroadcastMessage) DeviceType() byte {
+	return p.ExtendedContent()[2]
+}
+
+func (p AntBroadcastMessage) TransmissionType() byte {
+	return p.ExtendedContent()[3]
+}
+
+func (p AntBroadcastMessage) RssiInfo() Rssi {
+	ex := p.ExtendedContent()
+	return Rssi{
+		ex[4],
+		ex[5],
+		ex[6],
+	}
+}
+
+func (p AntBroadcastMessage) RxTimestamp() (ts uint16) {
+	binary.Read(bytes.NewReader(p.ExtendedContent()[7:]), binary.LittleEndian, &ts)
 	return
 }
 
@@ -38,20 +106,20 @@ func SystemResetMessage() AntPacket {
 	return makeAntPacket(constants.MESSAGE_SYSTEM_RESET, []byte{0x00})
 }
 
-func SetNetworkKeyMessage(channel byte, key []byte) AntPacket {
-	return makeAntPacket(constants.MESSAGE_NETWORK_KEY, append([]byte{channel}, key...))
+func SetNetworkKeyMessage(channel uint8, key []byte) AntPacket {
+	return makeAntPacket(constants.MESSAGE_NETWORK_KEY, append([]byte{byte(channel)}, key...))
 }
 
-func AssignChannelMessage(channel, typ byte) AntPacket {
-	return makeAntPacket(constants.MESSAGE_CHANNEL_ASSIGN, []byte{channel, typ, 0x00})
+func AssignChannelMessage(channel uint8, typ byte) AntPacket {
+	return makeAntPacket(constants.MESSAGE_CHANNEL_ASSIGN, []byte{byte(channel), typ, 0x00})
 }
 
-func SetChannelIdMessage(channel byte) AntPacket {
-	return makeAntPacket(constants.MESSAGE_CHANNEL_ID, []byte{channel, 0x00, 0x00, 0x00, 0x00})
+func SetChannelIdMessage(channel uint8) AntPacket {
+	return makeAntPacket(constants.MESSAGE_CHANNEL_ID, []byte{byte(channel), 0x00, 0x00, 0x00, 0x00})
 }
 
-func SetChannelRfFrequencyMessage(channel byte, freq uint16) AntPacket {
-	return makeAntPacket(constants.MESSAGE_CHANNEL_FREQUENCY, []byte{channel, byte(freq - 2400)})
+func SetChannelRfFrequencyMessage(channel uint8, freq uint16) AntPacket {
+	return makeAntPacket(constants.MESSAGE_CHANNEL_FREQUENCY, []byte{byte(channel), byte(freq - 2400)})
 }
 
 func OpenRxScanModeMessage() AntPacket {
@@ -67,7 +135,7 @@ func EnableExtendedMessagesMessage(enable bool) AntPacket {
 }
 
 func LibConfigMessage(rxTimestamp, rssi, channelId bool) AntPacket {
-	var opt byte = 0x00
+	var opt byte
 
 	if rxTimestamp {
 		opt |= constants.EXT_FLAG_TIMESTAMP

@@ -6,11 +6,14 @@ import (
 	"time"
 	"github.com/half2me/antgo/driver"
 	"github.com/half2me/antgo/message"
+	"github.com/half2me/antgo/constants"
 )
 
 func read(r chan message.AntPacket) {
 	for e := range r {
-		fmt.Println(e)
+		if e.Class() == constants.MESSAGE_TYPE_BROADCAST {
+			fmt.Println(message.AntBroadcastMessage(e))
+		}
 	}
 }
 

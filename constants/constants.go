@@ -27,3 +27,12 @@ const (
 	CHANNEL_TYPE_ONEWAY_RECEIVE = 0x40
 	CHANNEL_TYPE_ONEWAY_TRANSMIT = 0x50
 )
+
+const (
+	MESSAGE_TYPE_BROADCAST = 0x4E
+)
+
+var DeviceTypes = map[byte]string {
+	0x79: "S&C",
+	0x0B: "Power",
+}
