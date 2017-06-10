@@ -12,7 +12,9 @@ import (
 func read(r chan message.AntPacket) {
 	for e := range r {
 		if e.Class() == constants.MESSAGE_TYPE_BROADCAST {
-			fmt.Println(message.AntBroadcastMessage(e))
+			msg := message.AntBroadcastMessage(e)
+			fmt.Println(msg.ExtendedContent())
+			fmt.Println(msg.RxTimestamp())
 		}
 	}
 }

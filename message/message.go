@@ -10,8 +10,18 @@ import (
 type AntPacket []byte
 type AntBroadcastMessage AntPacket
 type Rssi struct{
-	MeasurementType, Rssi, Threshold byte
+	measurementType, rssi, threshold byte
 }
+
+func (r Rssi) Value() (v int8) {
+	binary.Read(bytes.NewReader([]byte{r.rssi}), binary.LittleEndian, &v)
+	return
+}
+/*
+func (r Rssi) String() string {
+	return fmt.Sprintf("%d dBm", r.Value())
+}
+*/
 
 func (p AntPacket) String() (s string) {
 	s = fmt.Sprintf("[%02X] [", p.Class())
@@ -70,6 +80,10 @@ func (p AntBroadcastMessage) ExtendedContent() []byte {
 	return AntPacket(p).Data()[10:]
 }
 
+func (p AntBroadcastMessage) ExtendedFlag() byte {
+	return AntPacket(p).Data()[9]
+}
+
 func (p AntBroadcastMessage) DeviceNumber() (num uint16) {
 	binary.Read(bytes.NewReader(p.ExtendedContent()[:2]), binary.LittleEndian, &num)
 	return
@@ -85,6 +99,7 @@ func (p AntBroadcastMessage) TransmissionType() byte {
 
 func (p AntBroadcastMessage) RssiInfo() Rssi {
 	ex := p.ExtendedContent()
+
 	return Rssi{
 		ex[4],
 		ex[5],
@@ -93,7 +108,7 @@ func (p AntBroadcastMessage) RssiInfo() Rssi {
 }
 
 func (p AntBroadcastMessage) RxTimestamp() (ts uint16) {
-	binary.Read(bytes.NewReader(p.ExtendedContent()[7:]), binary.LittleEndian, &ts)
+	binary.Read(bytes.NewReader(p.ExtendedContent()[8:]), binary.LittleEndian, &ts)
 	return
 }
 
@@ -156,5 +171,5 @@ func LibConfigMessage(rxTimestamp, rssi, channelId bool) AntPacket {
 		opt |= constants.EXT_FLAG_CHANNEL_ID
 	}
 
-	return makeAntPacket(constants.MESSAGE_ENABLE_EXT_RX_MESSAGES, []byte{0x00, opt})
+	return makeAntPacket(constants.MESSAGE_LIB_CONFIG, []byte{0x00, opt})
 }
