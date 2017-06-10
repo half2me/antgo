@@ -32,6 +32,17 @@ func (p AntPacket) Data() []byte {
 	return p[3:len(p)-1]
 }
 
+func (p AntPacket) CalculateChecksum() (chk byte) {
+	for _, v := range p[:len(p)-1] {
+		chk ^= v
+	}
+	return
+}
+
+func (p AntPacket) Valid() bool {
+	return p.CalculateChecksum() == p[len(p)-1]
+}
+
 func (p AntBroadcastMessage) String() (s string) {
 	s = fmt.Sprintf("CH: %d ", p.Channel())
 	s += fmt.Sprintf("[%d] ", p.DeviceNumber())
@@ -94,12 +105,10 @@ func makeAntPacket(messageType byte, content []byte) AntPacket {
 	p[2] = messageType
 	copy(p[3:], content)
 
-	// checksum
-	for _, v := range p[:len(p)-1] {
-		p[len(p)-1] ^= v
-	}
+	a := AntPacket(p)
+	a[len(a)-1] = a.CalculateChecksum()
 
-	return p
+	return a
 }
 
 func SystemResetMessage() AntPacket {

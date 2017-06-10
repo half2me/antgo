@@ -144,7 +144,15 @@ func (dev *UsbDevice) decodeLoop() {
 			}
 		}
 
-		dev.Read <- append(message.AntPacket{constants.MESSAGE_TX_SYNC, length}, buf...)
+		// Check message integrity
+		msg := message.AntPacket(append(message.AntPacket{constants.MESSAGE_TX_SYNC, length}, buf...))
+
+		if msg.Valid() {
+			dev.Read <- msg
+		} else {
+			// Optionally log bad msg
+			log.Println("ANT+ msg with bad checksum")
+		}
 	}
 }
 
