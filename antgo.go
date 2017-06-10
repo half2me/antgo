@@ -13,8 +13,7 @@ func read(r chan message.AntPacket) {
 	for e := range r {
 		if e.Class() == constants.MESSAGE_TYPE_BROADCAST {
 			msg := message.AntBroadcastMessage(e)
-			fmt.Println(msg.ExtendedContent())
-			fmt.Println(msg.RxTimestamp())
+			fmt.Println(msg)
 		}
 	}
 }
@@ -34,5 +33,5 @@ func main() {
 
 	dongle.StartRxScanMode()
 
-	time.Sleep(time.Second * 30)
+	time.Sleep(time.Second * 10)
 }

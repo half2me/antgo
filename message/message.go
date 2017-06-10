@@ -134,6 +134,14 @@ func SetNetworkKeyMessage(channel uint8, key []byte) AntPacket {
 	return makeAntPacket(constants.MESSAGE_NETWORK_KEY, append([]byte{byte(channel)}, key...))
 }
 
+func OpenChannelMessage(channel uint8) AntPacket {
+	return makeAntPacket(constants.MESSAGE_CHANNEL_OPEN, []byte{byte(channel)})
+}
+
+func CloseChannelMessage(channel uint8) AntPacket {
+	return makeAntPacket(constants.MESSAGE_CHANNEL_CLOSE, []byte{byte(channel)})
+}
+
 func AssignChannelMessage(channel uint8, typ byte) AntPacket {
 	return makeAntPacket(constants.MESSAGE_CHANNEL_ASSIGN, []byte{byte(channel), typ, 0x00})
 }

@@ -82,8 +82,8 @@ func (dev *UsbDevice) StartRxScanMode() {
 	dev.Write <- message.AssignChannelMessage(0, constants.CHANNEL_TYPE_ONEWAY_RECEIVE)
 	dev.Write <- message.SetChannelIdMessage(0)
 	dev.Write <- message.SetChannelRfFrequencyMessage(0, 2457)
-	//dev.Write <- message.EnableExtendedMessagesMessage(true)
-	dev.Write <- message.LibConfigMessage(true, true, true)
+	dev.Write <- message.EnableExtendedMessagesMessage(true)
+	//dev.Write <- message.LibConfigMessage(true, true, true)
 	dev.Write <- message.OpenRxScanModeMessage()
 }
 
@@ -95,6 +95,8 @@ func (dev *UsbDevice) loop() {
 	for {
 		select {
 		case <- dev.stopLoop:
+			dev.out.Write(message.CloseChannelMessage(0))
+			dev.out.Write(message.SystemResetMessage())
 			return
 		case d := <- dev.Write:
 			dev.out.Write(d)
