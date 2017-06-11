@@ -6,45 +6,16 @@ matrix:
   include:
     - os: linux
       sudo: required
-      env:
-        - GOARCH=amd64
-        - ARCH=x64
       addons:
         apt:
           packages:
-            - libusb-1.0
-            - libusb-dev
-    - os: linux
-      sudo: required
-      env:
-        - GOARCH=386
-        - ARCH=x86
-      addons:
-        apt:
-          packages:
-            - libusb-1.0
+            - libusb
             - libusb-dev
     - os: osx
       sudo: false
       osx_image: xcode8.3
-      env:
-        - GOARCH=amd64
-        - ARCH=x64
       cache:
         directories:
-          - $HOME/Library/Caches/Homebrew
-      before_install:
-        - brew install libusb
-    - os: osx
-      sudo: false
-      osx_image: xcode8.3
-      env:
-        - GOARCH=386
-        - ARCH=x86
-      cache:
-        directories:
-          - $GOPATH/src
-          - $GOPATH/pkg
           - $HOME/Library/Caches/Homebrew
       before_install:
         - brew install libusb
@@ -54,8 +25,8 @@ env:
     - CGO_ENABLED=1
 
 script:
-  - echo "${TRAVIS_OS_NAME} ${ARCH}"
-  - go build -o "bin/antgo-${TRAVIS_OS_NAME}-${ARCH}" -i .
+  - GOARCH=386 go build -o "bin/antgo-${TRAVIS_OS_NAME}-x86" -i .
+  - GOARCH=amd64 go build -o "bin/antgo-${TRAVIS_OS_NAME}-x64" -i .
 
 deploy:
   skip_cleanup: true
