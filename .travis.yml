@@ -1,28 +1,42 @@
 language: go
 go: 1.8.x
+sudo: false
 
-os:
-  - osx
+matrix:
+  fast_finish: true
+  include:
+    - os: osx
+      osx_image: xcode8.3
+      before_install:
+        - brew update
+        - brew install libusb
+      cache:
+        directories:
+            - $GOPATH/src
+            - $GOPATH/pkg
+            - $HOME/Library/Caches/Homebrew
+    - os: linux
 
 env:
-  - CGO_ENABLED=1
-
-osx_image: xcode8.3
-
-before_install:
-  - brew update
-  - brew install libusb
+  global:
+    - CGO_ENABLED=1
+  matrix:
+    - GOARCH=386
+    - GOARCH=amd64
 
 script:
-  - go build -o bin/antgo -i .
+  - go build -o "bin/antgo-$(TRAVIS_OS_NAME)-$(GOARCH)" -i .
+
 deploy:
   skip_cleanup: true
   provider: releases
   api_key:
     secure: GYnaLQtdN5foT7XHzwnw7QHdO1+lYEG0SZ2C7CNhSkUISwMMbGJV/7NPw93SHbEvseeAAYKaAcQEM+o9B9DqpGx+VqqB7COLPCkKhDTakjWiKnFHZTsT1mWD6l4hsHSp/TGLBAn0xPolz9nPgw1IGOpWfx2WIopSZfLYSi/sJK8TjJvKagdv3OGw8xwcfo5ojW+3HcjOEn13jw2BZ844QQope96+qsuwNQEyWLlWwFXnEpSLGPhRATuKCibfxsPUNjU1ccDrga51VrJTwAxeXbPC//KPEAvH5I7PcmvhGywYGRFSa6lr3nfq8/MjiMvkZFs8q0CjiR/I/gFfecjx/DY3g0/6D7lpC6ShyMdLW+VOd2VxkSETpFbHC7Da7H2ZcdcBOFkiZVEf9/7jNsMltrc5+CILnrgvVJAHE5GD67pdWmhXHZhvtSNDcsItw0c8EC37KyVJ9N7E6sq19uSRBCacgMGXuh0f3iKcHM/8xUb660G/XpRqOcoCTDdxBrVclPXMCANRkpQ4xzaACe8T46LuT90xmEsIirH5yTH0mrVx0vQ82zDc0KwMI0+ApnjaiVegrI1RNmw/ieWe4wsG5oaN1cywoQh5COhJ1hcgw0wGJs+569ILF5FLN8NXBULKOXcrYQGPSY3Qh+dx2z1ByQg9sVg8cJY7sUgaAjSaTRM=
-  file: bin/antgo
+  file_glob: true
+  file: bin/*
   on:
     repo: half2me/antgo
     tags: false
+
 notifications:
   email: false
