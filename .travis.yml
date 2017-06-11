@@ -11,6 +11,7 @@ matrix:
         apt:
           packages:
             - libusb-1.0
+            - libusb-dev
     - os: linux
       sudo: required
       env: GOARCH=386
@@ -18,7 +19,9 @@ matrix:
         apt:
           packages:
             - libusb-1.0
+            - libusb-dev
     - os: osx
+      sudo: false
       osx_image: xcode8.3
       env: GOARCH=amd64
       cache:
@@ -29,6 +32,7 @@ matrix:
       before_install:
         - brew install libusb
     - os: osx
+      sudo: false
       osx_image: xcode8.3
       env: GOARCH=386
       cache:
