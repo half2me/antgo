@@ -26,8 +26,6 @@ matrix:
       env: GOARCH=amd64
       cache:
         directories:
-          - $GOPATH/src
-          - $GOPATH/pkg
           - $HOME/Library/Caches/Homebrew
       before_install:
         - brew install libusb
@@ -48,7 +46,8 @@ env:
     - CGO_ENABLED=1
 
 script:
-  - go build -o "bin/antgo-$TRAVIS_OS_NAME-$GOARCH" -i .
+  - echo "${TRAVIS_OS_NAME} ${GOARCH}"
+  - go build -o "bin/antgo-${TRAVIS_OS_NAME}-${GOARCH}" -i .
 
 deploy:
   skip_cleanup: true
