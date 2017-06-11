@@ -6,7 +6,9 @@ matrix:
   include:
     - os: linux
       sudo: required
-      env: GOARCH=amd64
+      env:
+        - GOARCH=amd64
+        - ARCH=x64
       addons:
         apt:
           packages:
@@ -14,7 +16,9 @@ matrix:
             - libusb-dev
     - os: linux
       sudo: required
-      env: GOARCH=386
+      env:
+        - GOARCH=386
+        - ARCH=x86
       addons:
         apt:
           packages:
@@ -23,7 +27,9 @@ matrix:
     - os: osx
       sudo: false
       osx_image: xcode8.3
-      env: GOARCH=amd64
+      env:
+        - GOARCH=amd64
+        - ARCH=x64
       cache:
         directories:
           - $HOME/Library/Caches/Homebrew
@@ -32,7 +38,9 @@ matrix:
     - os: osx
       sudo: false
       osx_image: xcode8.3
-      env: GOARCH=386
+      env:
+        - GOARCH=386
+        - ARCH=x86
       cache:
         directories:
           - $GOPATH/src
@@ -46,8 +54,8 @@ env:
     - CGO_ENABLED=1
 
 script:
-  - echo "${TRAVIS_OS_NAME} ${GOARCH}"
-  - go build -o "bin/antgo-${TRAVIS_OS_NAME}-${GOARCH}" -i .
+  - echo "${TRAVIS_OS_NAME} ${ARCH}"
+  - go build -o "bin/antgo-${TRAVIS_OS_NAME}-${ARCH}" -i .
 
 deploy:
   skip_cleanup: true
