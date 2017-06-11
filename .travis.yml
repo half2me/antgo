@@ -1,40 +1,50 @@
 language: go
 go: 1.8.x
-sudo: false
 
 matrix:
   fast_finish: true
-
-os:
-  - linux
-  - osx
-
-osx_image: xcode8.3
-
-cache:
-  directories:
-    - $GOPATH/src
-    - $GOPATH/pkg
-    - $HOME/Library/Caches/Homebrew
-
-addons:
-  apt:
-    packages:
-      - libusb-1.0
-
-before_install:
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update          ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install libusb  ; fi
+  include:
+    - os: linux
+      sudo: required
+      env: GOARCH=amd64
+      addons:
+        apt:
+          packages:
+            - libusb-1.0
+    - os: linux
+      sudo: required
+      env: GOARCH=386
+      addons:
+        apt:
+          packages:
+            - libusb-1.0
+    - os: osx
+      osx_image: xcode8.3
+      env: GOARCH=amd64
+      cache:
+        directories:
+          - $GOPATH/src
+          - $GOPATH/pkg
+          - $HOME/Library/Caches/Homebrew
+      before_install:
+        - brew install libusb
+    - os: osx
+      osx_image: xcode8.3
+      env: GOARCH=386
+      cache:
+        directories:
+          - $GOPATH/src
+          - $GOPATH/pkg
+          - $HOME/Library/Caches/Homebrew
+      before_install:
+        - brew install libusb
 
 env:
   global:
     - CGO_ENABLED=1
-  matrix:
-    - GOARCH=386
-    - GOARCH=amd64
 
 script:
-  - go build -o "bin/antgo-$(TRAVIS_OS_NAME)-$(GOARCH)" -i .
+  - go build -o "bin/antgo-$TRAVIS_OS_NAME-$GOARCH" -i .
 
 deploy:
   skip_cleanup: true
