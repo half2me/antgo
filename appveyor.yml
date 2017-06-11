@@ -12,6 +12,7 @@ install:
   - set CGO_ENABLED=1
   - go version
   - go env
+  - go get .\...
 
 build_script:
   - SET GOARCH=amd64
