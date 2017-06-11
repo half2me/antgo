@@ -1,4 +1,6 @@
-platform: x64
+platform:
+  - x64
+  - Win32
 
 clone_folder: c:\gopath\src\github.com\account\myproject
 
@@ -15,19 +17,15 @@ install:
   - go get .\...
 
 build_script:
-  - SET GOARCH=amd64
-  - go build -o bin\antgo-win64 -i .
-  - SET GOARCH=386
-  - go build -o bin\antgo-win32 -i .
+  - go build -o bin\antgo-$(appveyor_build_worker_image) -i .
 
 artifacts:
-  - path: bin\antgo-win32
-  - path: bin\antgo-win64
+  - path: bin\antgo-$(appveyor_build_version)
     name: binary
 
 deploy:
   release: antgo-win-$(appveyor_build_version)
-  description: 'Antgo Win'
+  description: 'Antgo'
   provider: GitHub
   auth_token:
     secure: Aj+IX99Zm3sC+GBkE0eJxMV6k7jubTkpAkBYTgxjZNh5qgsmDAmLHZYadBq0a952
