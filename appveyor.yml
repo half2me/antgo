@@ -29,7 +29,7 @@ deploy:
   description: 'Antgo Win'
   provider: GitHub
   auth_token:
-    secure: secure: Aj+IX99Zm3sC+GBkE0eJxMV6k7jubTkpAkBYTgxjZNh5qgsmDAmLHZYadBq0a952
+    secure: Aj+IX99Zm3sC+GBkE0eJxMV6k7jubTkpAkBYTgxjZNh5qgsmDAmLHZYadBq0a952
   artifact: binary # This is the name we specified in the artifacts section.
   draft: true
   prerelease: true
