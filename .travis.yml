@@ -41,7 +41,7 @@ deploy:
   file: bin/*
   on:
     repo: half2me/antgo
-    tags: false
+    tags: true
 
 notifications:
   email: false
