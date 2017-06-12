@@ -9,7 +9,7 @@ install:
   - choco install pkgconfiglite
   - appveyor DownloadFile http://github.com/libusb/libusb/releases/download/v1.0.21/libusb-1.0.21.7z
   - 7z x -y libusb-1.0.21.7z
-  - xcopy /S libusb-1.0.21\* C:\cygwin\home\appveyor\
+  - dir /s
   - echo %PATH%
   - echo %GOPATH%
   - set PATH=%GOPATH%\bin;c:\go\bin;%PATH%
