@@ -7,12 +7,14 @@ environment:
 
 install:
   - choco install pkgconfiglite
-  - echo %PKG_CONFIG_PATH%
   - appveyor DownloadFile http://github.com/libusb/libusb/releases/download/v1.0.21/libusb-1.0.21.7z
   - 7z x -y libusb-1.0.21.7z -olibusb-1.0.21
-  - dir /s
+# - copy libusb-1.0.21\include\libusb-1.0\*
   - echo %PATH%
   - echo %GOPATH%
+  - echo %PKG_CONFIG_PATH%
+  - dir /s C:\cygwin
+  - dir /s C:\mingw
   - set PATH=%GOPATH%\bin;c:\go\bin;%PATH%
   - set CGO_ENABLED=1
   - go version
