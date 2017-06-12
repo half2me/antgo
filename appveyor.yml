@@ -9,10 +9,10 @@ install:
   - choco install pkgconfiglite
   - appveyor DownloadFile http://github.com/libusb/libusb/releases/download/v1.0.21/libusb-1.0.21.7z
   - 7z x -y libusb-1.0.21.7z -olibusb-1.0.21
-  - copy libusb-1.0.21\include\libusb-1.0\* C:\mingw-w64\local\include\
-  - copy libusb-1.0.21\include\libusb-1.0\* C:\MinGW\local\include\
-  - copy libusb-1.0.21\MinGW64\* C:\mingw-w64\local\lib\
-  - copy libusb-1.0.21\MinGW32\* C:\MinGW\local\lib\
+  - robocopy libusb-1.0.21\include\libusb-1.0\ C:\mingw-w64\local\include\ /e
+  - robocopy libusb-1.0.21\include\libusb-1.0\ C:\MinGW\local\include\ /e
+  - robocopy libusb-1.0.21\MinGW64\ C:\mingw-w64\local\lib\ /e
+  - robocopy libusb-1.0.21\MinGW32\ C:\MinGW\local\lib\ /e
   - echo %PATH%
   - echo %GOPATH%
   - tree C:\mingw-w64
