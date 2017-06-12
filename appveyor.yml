@@ -7,8 +7,9 @@ environment:
 
 install:
   - choco install pkgconfiglite
+  - echo $PKG_CONFIG_PATH
   - appveyor DownloadFile http://github.com/libusb/libusb/releases/download/v1.0.21/libusb-1.0.21.7z
-  - 7z x -y libusb-1.0.21.7z
+  - 7z x -ao libusb-1.0.21.7z -olibusb-1.0.21
   - dir /s
   - echo %PATH%
   - echo %GOPATH%
