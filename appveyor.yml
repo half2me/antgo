@@ -13,8 +13,7 @@ install:
   - echo %PATH%
   - echo %GOPATH%
   - echo %PKG_CONFIG_PATH%
-  - dir /s C:\cygwin
-  - dir /s C:\mingw
+  - tree C:\cygwin
   - set PATH=%GOPATH%\bin;c:\go\bin;%PATH%
   - set CGO_ENABLED=1
   - go version
