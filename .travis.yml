@@ -11,10 +11,14 @@ matrix:
         apt:
           packages:
             - libusb-1.0-0-dev
+            - libusb-1.0-0-dev:i386
+            - gcc-multilib
+            - g++-multilib
     - os: osx
       sudo: false
       osx_image: xcode8.3
       cache:
+        apt: true
         directories:
           - $HOME/Library/Caches/Homebrew
       before_install:
