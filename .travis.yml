@@ -1,16 +1,16 @@
 language: go
-go: 1.8.x
+go: 1.8
 
 matrix:
   fast_finish: true
   include:
     - os: linux
+      dist: trusty
       sudo: required
       addons:
         apt:
           packages:
-            - libusb-1.0
-            - libusb-dev
+            - libusb-1.0-0-dev
     - os: osx
       sudo: false
       osx_image: xcode8.3
