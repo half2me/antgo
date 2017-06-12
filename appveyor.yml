@@ -8,6 +8,7 @@ environment:
   GOPATH: c:\gopath
 
 install:
+  - choco install pkgconfiglite
   - echo %PATH%
   - echo %GOPATH%
   - set PATH=%GOPATH%\bin;c:\go\bin;%PATH%
