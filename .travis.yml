@@ -40,7 +40,6 @@ deploy:
   file_glob: true
   file: bin/*
   on:
-    branch: master
     repo: half2me/antgo
     tags: false
 
