@@ -3,7 +3,7 @@ platform: x64
 clone_folder: c:\msys64\go\src\github.com\half2me\antgo
 
 install:
-  - C:\msys64\usr\bin\bash -lc "pacman --noconfirm -S mingw64/mingw-w64-x86_64-go mingw64/mingw-w64-x86_64-libusb && export GOROOT=/mingw64/lib/go && export GOPATH=/go && export CGO_ENABLED=1 && go get ./... && go build -o antgo-win64.exe -i github.com/half2me/antgo"
+  - C:\msys64\usr\bin\bash -lc "pacman --noconfirm -S mingw64/mingw-w64-x86_64-go mingw64/mingw-w64-x86_64-libusb && export GOROOT=/mingw64/lib/go && export GOPATH=/go && export CGO_ENABLED=1 && go build -o antgo-win64.exe -i github.com/half2me/antgo"
 
 artifacts:
   - path: C:\msys64\home\appveyor\antgo-win64.exe
