@@ -6,19 +6,18 @@ install:
   - C:\msys64\usr\bin\bash.exe -lc "cd /go/src/github.com/half2me/antgo && ./av.sh"
   - ps: Get-ChildItem -Path C:\msys64 -Filter "antgo-win64.exe" -Recurse
   - ps: Get-ChildItem -Path C:\msys64 -Filter "*libusb*" -Recurse
+  - 7z a antgo-win64.zip C:\msys64\home\appveyor\antgo-win64.exe C:\msys64\mingw64\bin\libusb-1.0.dll
 
 artifacts:
-  - path: C:\msys64\home\appveyor\antgo-win64.exe
+  - path: antgo-win64.zip
     name: binary
 
-#deploy:
-#  release: antgo-win-$(appveyor_build_version)
-#  description: 'Antgo'
-#  provider: GitHub
-#  auth_token:
-#    secure: Aj+IX99Zm3sC+GBkE0eJxMV6k7jubTkpAkBYTgxjZNh5qgsmDAmLHZYadBq0a952
-#  artifact: binary # This is the name we specified in the artifacts section.
-#  draft: true
-#  prerelease: true
-#  on:
-#    branch: master
+deploy:
+  release: antgo-win64
+  description: 'Antgo'
+  provider: GitHub
+  auth_token:
+    secure: Aj+IX99Zm3sC+GBkE0eJxMV6k7jubTkpAkBYTgxjZNh5qgsmDAmLHZYadBq0a952
+  artifact: binary # This is the name we specified in the artifacts section.
+  draft: true
+  prerelease: true
