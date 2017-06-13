@@ -3,6 +3,7 @@ platform: x64
 clone_folder: c:\tools\msys64\go\src\github.com\half2me\antgo
 
 install:
+  - del /f /s c:\tools
   - choco install mingw msys2
   - refreshenv
   - C:\tools\msys64\usr\bin\bash.exe -lc "cd /go/src/github.com/half2me/antgo && ./av.sh"
