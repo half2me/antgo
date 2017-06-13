@@ -29,7 +29,6 @@ func (dev *UsbDevice) Open() (e error) {
 	dev.decode = make(chan byte)
 
 	dev.context = gousb.NewContext()
-	//dev.context.Debug(0)
 
 	dev.device, e = dev.context.OpenDeviceWithVIDPID(dev.vid, dev.pid)
 
@@ -51,7 +50,7 @@ func (dev *UsbDevice) Open() (e error) {
 	}
 
 	// Open an IN endpoint.
-	dev.in, e = dev.intf.InEndpoint(1)
+	dev.in, e = dev.intf.InEndpoint(3)
 	if e != nil {
 		return
 	}
