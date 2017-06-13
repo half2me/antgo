@@ -33,5 +33,5 @@ func main() {
 
 	dongle.StartRxScanMode()
 
-	time.Sleep(time.Second * 10)
+	time.Sleep(time.Minute)
 }
