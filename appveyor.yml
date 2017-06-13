@@ -3,7 +3,7 @@ platform: x64
 clone_folder: C:\msys64\go\src\github.com\half2me\antgo
 
 install:
-  - C:\msys64\usr\bin\bash.exe -lc "cd && ./go/src/github.com/half2me/antgoav.sh"
+  - C:\msys64\usr\bin\bash.exe -lc "/go/src/github.com/half2me/./antgoav.sh"
   - tree C:\msys64\home
 
 artifacts:
