@@ -11,5 +11,7 @@ pacman --noconfirm -S \
     mingw64/mingw-w64-x86_64-pkg-config \
     mingw64/mingw-w64-x86_64-libusb \
     msys/git && \
+go version
 go get github.com/half2me/antgo/... && \
 go build -o ~/antgo-win64.exe -i github.com/half2me/antgo
+echo "ALL DONE!"
