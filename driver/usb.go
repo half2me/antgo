@@ -1,7 +1,7 @@
 package driver
 
 import (
-	"github.com/kylelemons/gousb/usb"
+	"github.com/google/gousb"
 	"log"
 	"errors"
 	"github.com/half2me/antgo/message"
@@ -9,14 +9,17 @@ import (
 )
 
 type UsbDevice struct {
-	vid, pid int
-	context  *usb.Context
-	device   *usb.Device
-	in, out  usb.Endpoint
-	Read chan message.AntPacket
-	Write chan message.AntPacket
-	decode chan byte
-	stopLoop chan int
+	vid, pid 	gousb.ID
+	context  	*gousb.Context
+	device   	*gousb.Device
+	closeIface	func()
+	intf		*gousb.Interface
+	in			*gousb.InEndpoint
+	out			*gousb.OutEndpoint
+	Read 		chan message.AntPacket
+	Write 		chan message.AntPacket
+	decode 		chan byte
+	stopLoop 	chan int
 }
 
 func (dev *UsbDevice) Open() (e error) {
@@ -25,25 +28,29 @@ func (dev *UsbDevice) Open() (e error) {
 	dev.Write = make(chan message.AntPacket)
 	dev.decode = make(chan byte)
 
-	dev.context = usb.NewContext()
-	//dev.context.Debug(5)
+	dev.context = gousb.NewContext()
 
-	dev.device, e = dev.context.OpenDeviceWithVidPid(dev.vid, dev.pid)
+	dev.device, e = dev.context.OpenDeviceWithVIDPID(dev.vid, dev.pid)
 
-	if e != nil {
-		return
-	}
 	if dev.device == nil {
 		e = errors.New("Device not found!")
 		return
 	}
 
-	dev.in, e = dev.device.OpenEndpoint(1, 0, 0, uint8(1)|uint8(usb.ENDPOINT_DIR_IN))
+	// Claim default interface
+	dev.intf, dev.closeIface, e = dev.device.DefaultInterface()
 	if e != nil {
 		return
 	}
 
-	dev.out, e = dev.device.OpenEndpoint(1, 0, 0, uint8(1)|uint8(usb.ENDPOINT_DIR_OUT))
+	// Open an OUT endpoint.
+	dev.out, e = dev.intf.OutEndpoint(1)
+	if e != nil {
+		return
+	}
+
+	// Open an IN endpoint.
+	dev.in, e = dev.intf.InEndpoint(1)
 	if e != nil {
 		return
 	}
@@ -59,6 +66,10 @@ func (dev *UsbDevice) Open() (e error) {
 func (dev *UsbDevice) Close() {
 	log.Println("Closing device")
 	dev.stopLoop <- 1
+
+	if dev.closeIface != nil {
+		dev.closeIface()
+	}
 
 	if dev.device != nil {
 		dev.device.Close()
@@ -96,7 +107,7 @@ func (dev *UsbDevice) loop() {
 			dev.out.Write(d)
 		default:
 			// Read from device
-			buf := make([]byte, 64)
+			buf := make([]byte, dev.in.Desc.MaxPacketSize)
 			i, err := dev.in.Read(buf)
 
 			if err == nil {
@@ -152,7 +163,7 @@ func (dev *UsbDevice) decodeLoop() {
 	}
 }
 
-func GetUsbDevice(vid, pid int) *UsbDevice {
+func GetUsbDevice(vid, pid gousb.ID) *UsbDevice {
 	return &UsbDevice{
 		vid: vid,
 		pid: pid,
