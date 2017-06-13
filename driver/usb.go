@@ -50,7 +50,7 @@ func (dev *UsbDevice) Open() (e error) {
 	}
 
 	// Open an IN endpoint.
-	dev.in, e = dev.intf.InEndpoint(3)
+	dev.in, e = dev.intf.InEndpoint(1)
 	if e != nil {
 		return
 	}
