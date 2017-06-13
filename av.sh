@@ -13,5 +13,6 @@ pacman --noconfirm -S \
     msys/git && \
 go version
 go get github.com/half2me/antgo/... && \
-go build -o ~/antgo-win64.exe -i github.com/half2me/antgo
+go build -o bin/antgo-win64.exe -i github.com/half2me/antgo && \
+ls -la bin/
 echo "ALL DONE!"
