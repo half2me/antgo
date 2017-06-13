@@ -21,3 +21,5 @@ deploy:
   artifact: binary # This is the name we specified in the artifacts section.
   draft: true
   prerelease: true
+  on:
+    branch: master
