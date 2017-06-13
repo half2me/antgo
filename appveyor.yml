@@ -3,7 +3,7 @@ platform: x64
 clone_folder: c:\msys64\go\src\github.com\half2me\antgo
 
 install:
-  - C:\msys64\usr\bin\bash.exe -lc "pacman --noconfirm -S mingw64/mingw-w64-x86_64-go mingw64/mingw-w64-x86_64-gcc mingw64/mingw-w64-x86_64-pkg-config mingw64/mingw-w64-x86_64-libusb msys/git && pkg-config --list-all && echo $PKG_CONFIG_PATH && ls /mingw64/lib/pkgconfig && export GOROOT=/mingw64/lib/go && export GOPATH=/go && export CGO_ENABLED=1 && go get github.com/half2me/antgo/... && go build -o antgo-win64.exe -i github.com/half2me/antgo"
+  - C:\msys64\usr\bin\bash.exe -lc "pacman --noconfirm -S mingw64/mingw-w64-x86_64-go mingw64/mingw-w64-x86_64-gcc mingw64/mingw-w64-x86_64-pkg-config mingw64/mingw-w64-x86_64-libusb msys/git && export PKG_CONFIG_PATH="${PKG_CONFIG_PATH}:/mingw64/lib/pkgconfig" && echo $PKG_CONFIG_PATH && export GOROOT=/mingw64/lib/go && export GOPATH=/go && export CGO_ENABLED=1 && go get github.com/half2me/antgo/... && go build -o antgo-win64.exe -i github.com/half2me/antgo"
 
 artifacts:
   - path: C:\msys64\home\appveyor\antgo-win64.exe
