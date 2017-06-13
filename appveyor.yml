@@ -4,14 +4,14 @@ platform: x64
 
 install:
   - pwd
-  - choco install mingw msys2
+#  - choco install mingw msys2
   - refreshenv
-  - Xcopy /E /I c:\projects\antgo C:\tools\msys64\go\src\github.com\half2me\antgo
-  - C:\tools\msys64\usr\bin\bash.exe -lc "cd /go/src/github.com/half2me/antgo && ./av.sh"
+  - Xcopy /E /I c:\projects\antgo C:\msys64\go\src\github.com\half2me\antgo
+  - C:\msys64\usr\bin\bash.exe -lc "cd /go/src/github.com/half2me/antgo && ./av.sh"
   - tree C:\msys64\home
 
 artifacts:
-  - path: C:\tools\msys64\home\appveyor\antgo-win64.exe
+  - path: C:\msys64\home\appveyor\antgo-win64.exe
     name: binary
 
 #deploy:
