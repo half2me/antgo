@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-
+cd
+pwd
+ls -la
 export PATH="/mingw64/bin:${PATH}" && \
 export PKG_CONFIG_PATH="/mingw64/lib/pkgconfig:${PKG_CONFIG_PATH}" && \
 export GOROOT=/mingw64/lib/go && \
@@ -10,7 +12,6 @@ pacman --noconfirm -S \
     mingw64/mingw-w64-x86_64-libusb && \
 go version
 go get github.com/half2me/antgo/... && \
-go build -o /out/antgo-win64.exe -i github.com/half2me/antgo && \
-pwd && \
-ls -la /out/ && \
+go build -o antgo-win64.exe -i github.com/half2me/antgo && \
 echo "Build complete!"
+ls -la
