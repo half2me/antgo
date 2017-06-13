@@ -2,6 +2,8 @@
 cd
 pwd
 ls -la
+echo "aa"
+ls -la /go/src/github.com/half2me/antgo
 export PATH="/mingw64/bin:${PATH}" && \
 export PKG_CONFIG_PATH="/mingw64/lib/pkgconfig:${PKG_CONFIG_PATH}" && \
 export GOROOT=/mingw64/lib/go && \
