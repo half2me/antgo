@@ -10,6 +10,6 @@ pacman --noconfirm -S \
     mingw64/mingw-w64-x86_64-libusb && \
 go version
 go get github.com/half2me/antgo/... && \
-go build -o ~/antgo-win64.exe -i github.com/half2me/antgo && \
-cp /
+go build -o /out/antgo-win64.exe -i github.com/half2me/antgo && \
+ls -la /out/ && \
 echo "Build complete!"
