@@ -11,5 +11,6 @@ pacman --noconfirm -S \
 go version
 go get github.com/half2me/antgo/... && \
 go build -o /out/antgo-win64.exe -i github.com/half2me/antgo && \
+pwd && \
 ls -la /out/ && \
 echo "Build complete!"
