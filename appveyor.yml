@@ -1,13 +1,10 @@
 platform: x64
 
-clone_folder: c:\tools\msys64\go\src\github.com\half2me\antgo
+clone_folder: c:\msys64\go\src\github.com\half2me\antgo
 
 install:
-  - del /f /s c:\tools
-  - choco install mingw msys2
-  - refreshenv
-  - C:\tools\msys64\usr\bin\bash.exe -lc "cd /go/src/github.com/half2me/antgo && ./av.sh"
-  - tree C:\tools\msys64\home
+  - C:\msys64\usr\bin\bash.exe -lc "cd /go/src/github.com/half2me/antgo && ./av.sh"
+  - tree C:\msys64\home
 
 artifacts:
   - path: C:\msys64\home\appveyor\antgo-win64.exe
