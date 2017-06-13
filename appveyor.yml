@@ -4,8 +4,8 @@ clone_folder: C:\msys64\go\src\github.com\half2me\antgo
 
 install:
   - C:\msys64\usr\bin\bash.exe -lc "cd /go/src/github.com/half2me/antgo && ./av.sh"
-  - Get-ChildItem -Path C:\ -Filter "antgo-win64.exe" -Recurse
-  - Get-ChildItem -Path C:\ -Filter "*libusb*" -Recurse
+  - ps: Get-ChildItem -Path C:\ -Filter "antgo-win64.exe" -Recurse
+  - ps: Get-ChildItem -Path C:\ -Filter "*libusb*" -Recurse
 
 artifacts:
   - path: C:\msys64\home\appveyor\antgo-win64.exe
