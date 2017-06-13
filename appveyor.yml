@@ -6,6 +6,7 @@ install:
   - C:\msys64\usr\bin\bash.exe -lc "cd /go/src/github.com/half2me/antgo && ./av.sh"
   - 7z a antgo-win64.zip C:\msys64\home\appveyor\antgo-win64.exe C:\msys64\mingw64\bin\libusb-1.0.dll
 
+build: off
 
 artifacts:
   - path: antgo-win64.zip
