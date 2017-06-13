@@ -5,7 +5,6 @@ export PKG_CONFIG_PATH="${PKG_CONFIG_PATH}:/mingw64/lib/pkgconfig" && \
 export GOROOT=/mingw64/lib/go && \
 export GOPATH=/go && \
 export CGO_ENABLED=1 && \
-export GOARCH=amd64 && \
 pacman --noconfirm -S \
     mingw64/mingw-w64-x86_64-go \
     mingw64/mingw-w64-x86_64-gcc \
