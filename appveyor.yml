@@ -1,6 +1,6 @@
 platform: x64
 
-clone_path: C:\msys64\go\src\github.com\half2me\antgo
+clone_folder: C:\msys64\go\src\github.com\half2me\antgo
 
 install:
   - C:\msys64\usr\bin\bash.exe -lc "cd && ./av.sh"
