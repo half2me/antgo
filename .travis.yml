@@ -12,6 +12,7 @@ matrix:
           packages:
             - libusb-1.0-0-dev
             - libusb-1.0-0-dev:i386
+            - libusb-1.0-0-dev:armhf
             - gcc-multilib
             - g++-multilib
     - os: osx
