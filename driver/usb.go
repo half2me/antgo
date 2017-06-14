@@ -26,7 +26,7 @@ func (dev *UsbDevice) Open() (e error) {
 	dev.decode = make(chan byte)
 
 	dev.context = usb.NewContext()
-	//dev.context.Debug(5)
+	dev.context.Debug(5)
 
 	dev.device, e = dev.context.OpenDeviceWithVidPid(dev.vid, dev.pid)
 
