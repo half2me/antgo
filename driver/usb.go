@@ -29,6 +29,7 @@ func (dev *UsbDevice) Open() (e error) {
 	dev.decode = make(chan byte)
 
 	dev.context = gousb.NewContext()
+	dev.context.Debug(1)
 
 	dev.device, e = dev.context.OpenDeviceWithVIDPID(dev.vid, dev.pid)
 
