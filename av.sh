@@ -1,13 +1,20 @@
 #!/usr/bin/env bash
-export PATH="/mingw64/bin:${PATH}" && \
-export PKG_CONFIG_PATH="/mingw64/lib/pkgconfig:${PKG_CONFIG_PATH}" && \
-export GOROOT=/mingw64/lib/go && \
-export GOPATH=/go && \
-export CGO_ENABLED=1 && \
+export PATH="/mingw64/bin:${PATH}"
+export PKG_CONFIG_PATH="/mingw64/lib/pkgconfig:${PKG_CONFIG_PATH}"
+export GOROOT=/mingw64/lib/go
+export GOPATH=/go
+export CGO_ENABLED=1
 pacman --noconfirm -S \
     mingw64/mingw-w64-x86_64-go \
-    mingw64/mingw-w64-x86_64-libusb && \
+    mingw64/mingw-w64-x86_64-libusb
 go version
-go get github.com/half2me/antgo/... && \
+go get github.com/half2me/antgo/...
+
+# Temporarily switch to google's fix branch:
+cd /go/src/github.com/google/gousb && \
+git checkout same-endpoint-in-out
+#
+
+cd
 go build -o antgo-win64.exe -i github.com/half2me/antgo && \
-echo "Build complete!" #
+echo "Build complete!"
