@@ -10,11 +10,6 @@ pacman --noconfirm -S \
 go version
 go get github.com/half2me/antgo/...
 
-# Temporarily switch to google's fix branch:
-cd /go/src/github.com/google/gousb && \
-git checkout same-endpoint-in-out
-#
-
 cd
 go build -o antgo-win64.exe -i github.com/half2me/antgo && \
 echo "Build complete!"
