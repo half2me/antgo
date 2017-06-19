@@ -32,6 +32,7 @@ func (dev *UsbDevice) Open() (e error) {
 	if e != nil {
 		return
 	}
+
 	if dev.device == nil {
 		e = errors.New("Device not found!")
 		return
