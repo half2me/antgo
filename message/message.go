@@ -17,11 +17,6 @@ func (r Rssi) Value() (v int8) {
 	binary.Read(bytes.NewReader([]byte{r.rssi}), binary.LittleEndian, &v)
 	return
 }
-/*
-func (r Rssi) String() string {
-	return fmt.Sprintf("%d dBm", r.Value())
-}
-*/
 
 func (p AntPacket) String() (s string) {
 	s = fmt.Sprintf("[%02X] [", p.Class())
