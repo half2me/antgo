@@ -1,17 +1,16 @@
 package main
 
 import (
-	"log"
-	"fmt"
-	"time"
-	"github.com/half2me/antgo/driver"
-	"github.com/half2me/antgo/message"
-	"github.com/half2me/antgo/constants"
+"log"
+"fmt"
+"time"
+"github.com/half2me/antgo/driver"
+"github.com/half2me/antgo/message"
 )
 
 func read(r chan message.AntPacket) {
 	for e := range r {
-		if e.Class() == constants.MESSAGE_TYPE_BROADCAST {
+		if e.Class() == message.MESSAGE_TYPE_BROADCAST {
 			msg := message.AntBroadcastMessage(e)
 			fmt.Println(msg)
 		}

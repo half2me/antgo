@@ -1,4 +1,4 @@
-package constants
+package message
 
 const (
 	MESSAGE_TX_SYNC = 0xA4

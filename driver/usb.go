@@ -5,7 +5,6 @@ import (
 	"log"
 	"errors"
 	"github.com/half2me/antgo/message"
-	"github.com/half2me/antgo/constants"
 )
 
 type UsbDevice struct {
@@ -72,8 +71,8 @@ func (dev *UsbDevice) Close() {
 
 func (dev *UsbDevice) StartRxScanMode() {
 	dev.Write <- message.SystemResetMessage()
-	dev.Write <- message.SetNetworkKeyMessage(0, []byte(constants.ANTPLUS_NETWORK_KEY))
-	dev.Write <- message.AssignChannelMessage(0, constants.CHANNEL_TYPE_ONEWAY_RECEIVE)
+	dev.Write <- message.SetNetworkKeyMessage(0, []byte(message.ANTPLUS_NETWORK_KEY))
+	dev.Write <- message.AssignChannelMessage(0, message.CHANNEL_TYPE_ONEWAY_RECEIVE)
 	dev.Write <- message.SetChannelIdMessage(0)
 	dev.Write <- message.SetChannelRfFrequencyMessage(0, 2457)
 	dev.Write <- message.EnableExtendedMessagesMessage(true)
@@ -119,7 +118,7 @@ func (dev *UsbDevice) decodeLoop() {
 			return
 		}
 
-		if sync != constants.MESSAGE_TX_SYNC {
+		if sync != message.MESSAGE_TX_SYNC {
 			continue
 		}
 
@@ -141,7 +140,7 @@ func (dev *UsbDevice) decodeLoop() {
 		}
 
 		// Check message integrity
-		msg := message.AntPacket(append(message.AntPacket{constants.MESSAGE_TX_SYNC, length}, buf...))
+		msg := message.AntPacket(append(message.AntPacket{message.MESSAGE_TX_SYNC, length}, buf...))
 
 		if msg.Valid() {
 			dev.Read <- msg
