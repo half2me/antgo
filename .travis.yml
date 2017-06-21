@@ -29,8 +29,8 @@ env:
     - CGO_ENABLED=1
 
 script:
-  - GOARCH=amd64 go build -o "bin/antgo-${TRAVIS_OS_NAME}-x64" -i .
-  - if [[ "$TRAVIS_OS_NAME" != "osx" ]]; then GOARCH=386 go build -o "bin/antgo-${TRAVIS_OS_NAME}-x86" -i . ; fi
+  - GOARCH=amd64 go build -o "bin/antdump-${TRAVIS_OS_NAME}-x64" -i cmd/antdump/antdump.go
+  - if [[ "$TRAVIS_OS_NAME" != "osx" ]]; then GOARCH=386 go build -o "bin/antdump-${TRAVIS_OS_NAME}-x86" -i cmd/antdump/antdump.go ; fi
 
 deploy:
   skip_cleanup: true

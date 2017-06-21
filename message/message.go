@@ -2,7 +2,6 @@ package message
 
 import (
 	"fmt"
-	"github.com/half2me/antgo/constants"
 	"encoding/binary"
 	"bytes"
 )
@@ -51,7 +50,7 @@ func (p AntPacket) Valid() bool {
 func (p AntBroadcastMessage) String() (s string) {
 	s = fmt.Sprintf("CH: %d ", p.Channel())
 	s += fmt.Sprintf("[%d] ", p.DeviceNumber())
-	s += fmt.Sprintf("[%s] ", constants.DeviceTypes[p.DeviceType()])
+	s += fmt.Sprintf("[%s] ", DeviceTypes[p.DeviceType()])
 
 	s += "["
 
@@ -110,7 +109,7 @@ func (p AntBroadcastMessage) RxTimestamp() (ts uint16) {
 func makeAntPacket(messageType byte, content []byte) AntPacket {
 	p := make([]byte, len(content) + 4)
 
-	p[0] = constants.MESSAGE_TX_SYNC
+	p[0] = MESSAGE_TX_SYNC
 	p[1] = byte(len(content))
 	p[2] = messageType
 	copy(p[3:], content)
@@ -122,35 +121,35 @@ func makeAntPacket(messageType byte, content []byte) AntPacket {
 }
 
 func SystemResetMessage() AntPacket {
-	return makeAntPacket(constants.MESSAGE_SYSTEM_RESET, []byte{0x00})
+	return makeAntPacket(MESSAGE_SYSTEM_RESET, []byte{0x00})
 }
 
 func SetNetworkKeyMessage(channel uint8, key []byte) AntPacket {
-	return makeAntPacket(constants.MESSAGE_NETWORK_KEY, append([]byte{byte(channel)}, key...))
+	return makeAntPacket(MESSAGE_NETWORK_KEY, append([]byte{byte(channel)}, key...))
 }
 
 func OpenChannelMessage(channel uint8) AntPacket {
-	return makeAntPacket(constants.MESSAGE_CHANNEL_OPEN, []byte{byte(channel)})
+	return makeAntPacket(MESSAGE_CHANNEL_OPEN, []byte{byte(channel)})
 }
 
 func CloseChannelMessage(channel uint8) AntPacket {
-	return makeAntPacket(constants.MESSAGE_CHANNEL_CLOSE, []byte{byte(channel)})
+	return makeAntPacket(MESSAGE_CHANNEL_CLOSE, []byte{byte(channel)})
 }
 
 func AssignChannelMessage(channel uint8, typ byte) AntPacket {
-	return makeAntPacket(constants.MESSAGE_CHANNEL_ASSIGN, []byte{byte(channel), typ, 0x00})
+	return makeAntPacket(MESSAGE_CHANNEL_ASSIGN, []byte{byte(channel), typ, 0x00})
 }
 
 func SetChannelIdMessage(channel uint8) AntPacket {
-	return makeAntPacket(constants.MESSAGE_CHANNEL_ID, []byte{byte(channel), 0x00, 0x00, 0x00, 0x00})
+	return makeAntPacket(MESSAGE_CHANNEL_ID, []byte{byte(channel), 0x00, 0x00, 0x00, 0x00})
 }
 
 func SetChannelRfFrequencyMessage(channel uint8, freq uint16) AntPacket {
-	return makeAntPacket(constants.MESSAGE_CHANNEL_FREQUENCY, []byte{byte(channel), byte(freq - 2400)})
+	return makeAntPacket(MESSAGE_CHANNEL_FREQUENCY, []byte{byte(channel), byte(freq - 2400)})
 }
 
 func OpenRxScanModeMessage() AntPacket {
-	return makeAntPacket(constants.OPEN_RX_SCAN_MODE, []byte{0x00})
+	return makeAntPacket(OPEN_RX_SCAN_MODE, []byte{0x00})
 }
 
 func EnableExtendedMessagesMessage(enable bool) AntPacket {
@@ -158,21 +157,21 @@ func EnableExtendedMessagesMessage(enable bool) AntPacket {
 	if enable {
 		opt = 0x01
 	}
-	return makeAntPacket(constants.MESSAGE_ENABLE_EXT_RX_MESSAGES, []byte{opt})
+	return makeAntPacket(MESSAGE_ENABLE_EXT_RX_MESSAGES, []byte{opt})
 }
 
 func LibConfigMessage(rxTimestamp, rssi, channelId bool) AntPacket {
 	var opt byte
 
 	if rxTimestamp {
-		opt |= constants.EXT_FLAG_TIMESTAMP
+		opt |= EXT_FLAG_TIMESTAMP
 	}
 	if rssi {
-		opt |= constants.EXT_FLAG_RSSI
+		opt |= EXT_FLAG_RSSI
 	}
 	if channelId {
-		opt |= constants.EXT_FLAG_CHANNEL_ID
+		opt |= EXT_FLAG_CHANNEL_ID
 	}
 
-	return makeAntPacket(constants.MESSAGE_LIB_CONFIG, []byte{0x00, opt})
+	return makeAntPacket(MESSAGE_LIB_CONFIG, []byte{0x00, opt})
 }

@@ -3,9 +3,20 @@ package message
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 )
 
 type PowerMessage AntBroadcastMessage
+
+func (m PowerMessage) String() (s string) {
+	if m.DataPageNumber() == 0x10 {
+		s = fmt.Sprintf("Power: %f", m.InstantaneousPower())
+	} else {
+		s = fmt.Sprintf("----")
+	}
+
+	return
+}
 
 // The specifies the type of message sent by the power sensor
 // Currently we only decode the standard Power-Only main data page (0x10)

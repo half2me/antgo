@@ -1,4 +1,4 @@
-package constants
+package message
 
 const (
 	MESSAGE_TX_SYNC = 0xA4
@@ -34,7 +34,12 @@ const (
 	MESSAGE_TYPE_BROADCAST = 0x4E
 )
 
+const (
+	DEVICE_TYPE_SPEED_AND_CADENCE = 0x79
+	DEVICE_TYPE_POWER = 0x0B
+)
+
 var DeviceTypes = map[byte]string {
-	0x79: "S&C",
-	0x0B: "Power",
+	DEVICE_TYPE_SPEED_AND_CADENCE: "S&C",
+	DEVICE_TYPE_POWER: "Power",
 }
