@@ -17,7 +17,12 @@ func read(r chan message.AntPacket, raw bool) {
 			if raw {
 				fmt.Println(msg)
 			} else {
-				fmt.Println("Decoding not supported yet")
+				switch msg.DeviceType() {
+				case message.DEVICE_TYPE_SPEED_AND_CADENCE:
+					fmt.Println(message.SpeedAndCadenceMessage(msg))
+				case message.DEVICE_TYPE_POWER:
+					fmt.Println(message.PowerMessage(msg))
+				}
 			}
 		}
 	}
@@ -26,6 +31,7 @@ func read(r chan message.AntPacket, raw bool) {
 func main() {
 	raw := flag.Bool("raw", true, "do not attempt to decode ANT+ Broadcast messages")
 	pid := flag.Int("pid", 0x1008, "Specify pid of USB Ant dongle")
+	flag.Parse()
 
 	dongle := driver.GetUsbDevice(0x0fcf, *pid)
 	err := dongle.Open()
