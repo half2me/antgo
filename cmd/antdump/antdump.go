@@ -10,42 +10,38 @@ import (
 	"os/signal"
 )
 
-func read(r chan message.AntPacket, raw bool) {
+func read(r chan message.AntPacket) {
 	for e := range r {
 		if e.Class() == message.MESSAGE_TYPE_BROADCAST {
 			msg := message.AntBroadcastMessage(e)
-			if raw {
-				fmt.Println(msg)
-			} else {
-				switch msg.DeviceType() {
-				case message.DEVICE_TYPE_SPEED_AND_CADENCE:
-					fmt.Println(message.SpeedAndCadenceMessage(msg))
-				case message.DEVICE_TYPE_POWER:
-					fmt.Println(message.PowerMessage(msg))
-				}
+			switch msg.DeviceType() {
+			case message.DEVICE_TYPE_SPEED_AND_CADENCE:
+				fmt.Println(message.SpeedAndCadenceMessage(msg))
+			case message.DEVICE_TYPE_POWER:
+				fmt.Println(message.PowerMessage(msg))
 			}
 		}
 	}
 }
 
 func main() {
-	raw := flag.Bool("raw", true, "do not attempt to decode ANT+ Broadcast messages")
-	pid := flag.Int("pid", 0x1008, "Specify pid of USB Ant dongle")
+	flag.String("driver", "usb", "Specify the Driver to use: [usb, serial, file, debug]")
+	flag.Bool("raw", true, "Do not attempt to decode ANT+ Broadcast messages")
+	pid := flag.Int("pid", 0x1008, "When using the USB driver specify pid of the dongle (i.e.: 0x1008")
 	flag.Parse()
 
-	dongle := driver.GetUsbDevice(0x0fcf, *pid)
-	err := dongle.Open()
+	device := driver.NewDevice(driver.GetUsbDevice(0x0fcf, *pid))
+	err := device.Start()
 
 	if err != nil {
 		log.Fatalln(err)
 		return
 	}
 
-	defer dongle.Close()
+	defer device.Stop()
 
-	go read(dongle.Read, *raw)
-
-	dongle.StartRxScanMode()
+	go read(device.Read)
+	device.StartRxScanMode()
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
