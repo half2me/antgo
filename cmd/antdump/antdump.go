@@ -11,14 +11,21 @@ import (
 )
 
 func read(r chan message.AntPacket) {
+	var prevPower message.PowerMessage = nil
+	var prevSnC message.SpeedAndCadenceMessage = nil
 	for e := range r {
 		if e.Class() == message.MESSAGE_TYPE_BROADCAST {
 			msg := message.AntBroadcastMessage(e)
 			switch msg.DeviceType() {
 			case message.DEVICE_TYPE_SPEED_AND_CADENCE:
-				fmt.Println(message.SpeedAndCadenceMessage(msg))
+				cad, stall := message.SpeedAndCadenceMessage(msg).Cadence(prevSnC)
+				if !stall {
+					fmt.Printf("Cadence: %f rpm\n", cad)
+				}
+				prevSnC = message.SpeedAndCadenceMessage(msg)
 			case message.DEVICE_TYPE_POWER:
-				fmt.Println(message.PowerMessage(msg))
+				fmt.Printf("Power: %.f W\n", message.PowerMessage(msg).AveragePower(prevPower))
+				prevPower = message.PowerMessage(msg)
 			}
 		}
 	}
