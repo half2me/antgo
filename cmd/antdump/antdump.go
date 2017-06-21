@@ -28,8 +28,8 @@ func main() {
 	drv := flag.String("driver", "usb", "Specify the Driver to use: [usb, serial, file, debug]")
 	flag.Bool("raw", true, "Do not attempt to decode ANT+ Broadcast messages")
 	pid := flag.Int("pid", 0x1008, "When using the USB driver specify pid of the dongle (i.e.: 0x1008")
-	inFile := flag.String("", "in.cap", "File to read ANT+ data from.")
-	outFile := flag.String("", "out.cap", "File to write ANT+ data to.")
+	inFile := flag.String("infile", "", "File to read ANT+ data from.")
+	outFile := flag.String("outfile", "", "File to write ANT+ data to.")
 	flag.Bool("dump", false, "Dump all raw ANT+ data to capture file")
 	flag.Parse()
 
