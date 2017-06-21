@@ -35,7 +35,7 @@ func main() {
 
 	var device *driver.AntDevice
 
-	switch drv {
+	switch *drv {
 	case "usb":
 		device = driver.NewDevice(driver.GetUsbDevice(0x0fcf, *pid))
 	case "file":
