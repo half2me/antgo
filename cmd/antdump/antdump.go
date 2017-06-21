@@ -25,12 +25,23 @@ func read(r chan message.AntPacket) {
 }
 
 func main() {
-	flag.String("driver", "usb", "Specify the Driver to use: [usb, serial, file, debug]")
+	drv := flag.String("driver", "usb", "Specify the Driver to use: [usb, serial, file, debug]")
 	flag.Bool("raw", true, "Do not attempt to decode ANT+ Broadcast messages")
 	pid := flag.Int("pid", 0x1008, "When using the USB driver specify pid of the dongle (i.e.: 0x1008")
+	inFile := flag.String("", "in.cap", "File to read ANT+ data from.")
+	outFile := flag.String("", "out.cap", "File to write ANT+ data to.")
+	flag.Bool("dump", false, "Dump all raw ANT+ data to capture file")
 	flag.Parse()
 
-	device := driver.NewDevice(driver.GetUsbDevice(0x0fcf, *pid))
+	var device *driver.AntDevice
+
+	switch drv {
+	case "usb":
+		device = driver.NewDevice(driver.GetUsbDevice(0x0fcf, *pid))
+	case "file":
+		device = driver.NewDevice(driver.GetAntCaptureFile(*inFile, *outFile))
+	}
+
 	err := device.Start()
 
 	if err != nil {

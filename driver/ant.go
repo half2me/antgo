@@ -10,7 +10,7 @@ type AntDriver interface {
 	Close()
 	Read(b []byte) (int, error)
 	Write(b []byte) (int, error)
-	BufferSize() int
+	BufferSize() uint
 }
 
 type AntDevice struct {

@@ -69,7 +69,7 @@ func (dev *UsbDevice) Write(b []byte) (int, error) {
 	return dev.out.Write(b)
 }
 
-func (dev *UsbDevice) BufferSize() int {
+func (dev *UsbDevice) BufferSize() uint {
 	return 64 // replace with maxBufferSize query in google's gousb
 }
 
