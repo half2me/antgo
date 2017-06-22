@@ -2,63 +2,46 @@ package driver
 
 import (
 	"os"
+	"io"
+	"time"
 )
 
 type AntCaptureFile struct {
-	readpath string
-	writepath string
-	readfile *os.File
-	writefile *os.File
-	bufSize uint
-	buf []byte
+	path string
+	file *os.File
 }
 
 func (f *AntCaptureFile) Open() (e error) {
-	if len(f.readpath) > 0 {
-		f.readfile, e = os.Open(f.readpath)
-		if e != nil {
-			return
-		}
-	}
-
-	if len(f.writepath) > 0 {
-		f.writefile, e = os.Open(f.writepath)
-	}
+	f.file, e = os.Open(f.path)
 	return
 }
 
 func (f *AntCaptureFile) Close() {
-	if f.readfile != nil {
-		f.readfile.Close()
-	}
-
-	if f.writefile != nil {
-		f.writefile.Close()
-	}
+	f.file.Close()
 }
 
-func (f *AntCaptureFile) Read(b []byte) (int, error) {
-	return f.Read(f.buf)
+func (f *AntCaptureFile) Read(b []byte) (n int, e error) {
+	n, e = f.file.Read(b)
+	if e == io.EOF {
+		f.file.Seek(0, 0)
+		n, e = f.file.Read(b)
+	}
+	time.Sleep(100 * time.Millisecond) // Artificial delay
+
+	return
 }
 
 func (f *AntCaptureFile) Write(b []byte) (int, error) {
-	if f.writefile != nil {
-		return f.writefile.Write(b)
-	}
-
-	// If there is not writeFile, we just ignore output
+	// We ignore output
 	return len(b), nil
 }
 
-func (f *AntCaptureFile) BufferSize() uint {
-	return f.bufSize
+func (f *AntCaptureFile) BufferSize() int {
+	return 512
 }
 
-func GetAntCaptureFile(readpath, writepath string) *AntCaptureFile {
+func GetAntCaptureFile(path string) *AntCaptureFile {
 	return &AntCaptureFile{
-		readpath: readpath,
-		writepath: writepath,
-		bufSize: 512,
-		buf: make([]byte, 512),
+		path:path,
 	}
 }

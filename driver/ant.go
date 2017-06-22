@@ -10,7 +10,7 @@ type AntDriver interface {
 	Close()
 	Read(b []byte) (int, error)
 	Write(b []byte) (int, error)
-	BufferSize() uint
+	BufferSize() int
 }
 
 type AntDevice struct {
@@ -20,9 +20,11 @@ type AntDevice struct {
 	stopper chan byte
 	decoder chan byte
 	done chan byte
+	buf []byte
 }
 
 func (dev *AntDevice) Start() (e error) {
+	dev.buf = make([]byte, dev.Driver.BufferSize())
 	log.Println("Starting Device")
 	e = dev.Driver.Open()
 	go dev.loop()
@@ -42,24 +44,26 @@ func (dev *AntDevice) loop() {
 	defer func() {dev.done <- 1}()
 	defer dev.Driver.Close()
 	defer close(dev.decoder)
+	defer log.Println("Loop stopped!")
 	log.Println("Loop Started")
 
 	for {
 		select {
 		case <- dev.stopper:
-			log.Println("Loop stopped!")
 			return
 		case d := <- dev.Write:
 			dev.Driver.Write(d)
 		default:
 			// Read from device
-			buf := make([]byte, dev.Driver.BufferSize())
-			i, err := dev.Driver.Read(buf)
+			i, err := dev.Driver.Read(dev.buf)
 
 			if err == nil {
-				for _, v := range buf[:i] {
+				for _, v := range dev.buf[:i] {
 					dev.decoder <- v
 				}
+			} else {
+				log.Println(err)
+				return
 			}
 		}
 	}
