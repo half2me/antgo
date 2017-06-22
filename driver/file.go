@@ -26,7 +26,7 @@ func (f *AntCaptureFile) Read(b []byte) (n int, e error) {
 		f.file.Seek(0, 0)
 		n, e = f.file.Read(b)
 	}
-	time.Sleep(100 * time.Millisecond) // Artificial delay
+	time.Sleep(time.Millisecond * 100) // Artificial delay
 
 	return
 }
@@ -37,7 +37,7 @@ func (f *AntCaptureFile) Write(b []byte) (int, error) {
 }
 
 func (f *AntCaptureFile) BufferSize() int {
-	return 512
+	return 16
 }
 
 func GetAntCaptureFile(path string) *AntCaptureFile {

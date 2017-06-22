@@ -34,11 +34,20 @@ func read(r chan message.AntPacket, log string) {
 			case message.DEVICE_TYPE_SPEED_AND_CADENCE:
 				cad, stall := message.SpeedAndCadenceMessage(msg).Cadence(prevSnC)
 				if !stall {
-					fmt.Printf("Cadence: %f rpm\n", cad)
+					fmt.Printf("(%d) %f rpm\n", msg.DeviceNumber(), cad)
+				} else {
+					fmt.Printf("(%d) - rpm\n", msg.DeviceNumber())
 				}
+
+				fmt.Println(msg.Content())
+				dist := message.SpeedAndCadenceMessage(msg).Distance(prevSnC, 0.98)
+				fmt.Printf("(%d) %f m\n", msg.DeviceNumber(), dist)
+
+
 				prevSnC = message.SpeedAndCadenceMessage(msg)
 			case message.DEVICE_TYPE_POWER:
-				fmt.Printf("Power: %.f W\n", message.PowerMessage(msg).AveragePower(prevPower))
+				pow := message.PowerMessage(msg).AveragePower(prevPower)
+				fmt.Printf("(%d) %d W\n", msg.DeviceNumber(), int16(pow))
 				prevPower = message.PowerMessage(msg)
 			}
 		}
@@ -46,12 +55,11 @@ func read(r chan message.AntPacket, log string) {
 }
 
 func main() {
-	drv := flag.String("driver", "usb", "Specify the Driver to use: [usb, serial, file, debug]")
+	drv := flag.String("driver", "file", "Specify the Driver to use: [usb, serial, file, debug]")
 	flag.Bool("raw", true, "Do not attempt to decode ANT+ Broadcast messages")
 	pid := flag.Int("pid", 0x1008, "When using the USB driver specify pid of the dongle (i.e.: 0x1008")
-	inFile := flag.String("infile", "", "File to read ANT+ data from.")
+	inFile := flag.String("infile", "capture/123.cap", "File to read ANT+ data from.")
 	outFile := flag.String("outfile", "", "File to dump ANT+ data to.")
-	flag.Bool("dump", false, "Dump all raw ANT+ data to capture file")
 	flag.Parse()
 
 	var device *driver.AntDevice
