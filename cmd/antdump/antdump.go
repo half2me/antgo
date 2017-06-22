@@ -39,10 +39,19 @@ func read(r chan message.AntPacket, log string) {
 					fmt.Printf("(%d) - rpm\n", msg.DeviceNumber())
 				}
 
-				fmt.Println(msg.Content())
 				dist := message.SpeedAndCadenceMessage(msg).Distance(prevSnC, 0.98)
-				fmt.Printf("(%d) %f m\n", msg.DeviceNumber(), dist)
+				if dist > 0.001 {
+					fmt.Printf("(%d) %f m\n", msg.DeviceNumber(), dist)
+				} else {
+					fmt.Printf("(%d) - m\n", msg.DeviceNumber())
+				}
 
+				speed, stall2 := message.SpeedAndCadenceMessage(msg).Speed(prevSnC, 0.98)
+				if !stall2 {
+					fmt.Printf("(%d) %f m/s\n", msg.DeviceNumber(), speed)
+				} else {
+					fmt.Printf("(%d) - m/s\n", msg.DeviceNumber())
+				}
 
 				prevSnC = message.SpeedAndCadenceMessage(msg)
 			case message.DEVICE_TYPE_POWER:
