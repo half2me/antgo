@@ -61,9 +61,6 @@ func (dev *AntDevice) loop() {
 				for _, v := range dev.buf[:i] {
 					dev.decoder <- v
 				}
-			} else {
-				log.Println(err)
-				return
 			}
 		}
 	}
