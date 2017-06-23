@@ -64,10 +64,10 @@ func read(r chan message.AntPacket, log string) {
 }
 
 func main() {
-	drv := flag.String("driver", "file", "Specify the Driver to use: [usb, serial, file, debug]")
-	flag.Bool("raw", true, "Do not attempt to decode ANT+ Broadcast messages")
+	drv := flag.String("driver", "usb", "Specify the Driver to use: [usb, serial, file, debug]")
+	flag.Bool("raw", false, "Do not attempt to decode ANT+ Broadcast messages")
 	pid := flag.Int("pid", 0x1008, "When using the USB driver specify pid of the dongle (i.e.: 0x1008")
-	inFile := flag.String("infile", "capture/123.cap", "File to read ANT+ data from.")
+	inFile := flag.String("infile", "", "File to read ANT+ data from.")
 	outFile := flag.String("outfile", "", "File to dump ANT+ data to.")
 	flag.Parse()
 
