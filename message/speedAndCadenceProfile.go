@@ -3,9 +3,14 @@ package message
 import (
 	"encoding/binary"
 	"bytes"
+	"fmt"
 )
 
 type SpeedAndCadenceMessage AntBroadcastMessage
+
+func (m SpeedAndCadenceMessage) String() string {
+	return fmt.Sprintf("#: %d | %f rpmC, #: %d | %f mC", m.CadenceEventTime(), m.CumulativeCadenceRevolutionCount(), m.SpeedEventTime(), m.CumulativeSpeedRevolutionCount())
+}
 
 // Represents the time of the last valid bike cadence event (1/1024 sec)
 func (m SpeedAndCadenceMessage) CadenceEventTime() (num uint16) {
@@ -31,15 +36,15 @@ func (m SpeedAndCadenceMessage) CumulativeSpeedRevolutionCount() (num uint16) {
 	return
 }
 
-func (m SpeedAndCadenceMessage) SpeedEventTimeDiff(prev SpeedAndCadenceMessage) uint16 {
+func (m SpeedAndCadenceMessage) speedEventTimeDiff(prev SpeedAndCadenceMessage) uint16 {
 	return m.SpeedEventTime() - prev.SpeedEventTime()
 }
 
-func (m SpeedAndCadenceMessage) CadenceEventTimeDiff(prev SpeedAndCadenceMessage) uint16 {
+func (m SpeedAndCadenceMessage) cadenceEventTimeDiff(prev SpeedAndCadenceMessage) uint16 {
 	return m.CadenceEventTime() - prev.CadenceEventTime()
 }
 
-func (m SpeedAndCadenceMessage) SpeedRevolutionCountDiff(prev SpeedAndCadenceMessage) uint16 {
+func (m SpeedAndCadenceMessage) speedRevolutionCountDiff(prev SpeedAndCadenceMessage) uint16 {
 	return m.CumulativeSpeedRevolutionCount() - prev.CumulativeSpeedRevolutionCount()
 }
 
@@ -57,17 +62,20 @@ func (m SpeedAndCadenceMessage) Cadence(prev SpeedAndCadenceMessage) (cadence fl
 		return 0, false
 	}
 
-	if m.CadenceEventTimeDiff(prev) == 0 {
+	if m.cadenceEventTimeDiff(prev) == 0 {
 		return 0, true
 	}
 
-	return float32(m.CadenceRevolutionCountDiff(prev)) * 1024 * 60 / float32(m.CadenceEventTimeDiff(prev)), false
+	return float32(m.CadenceRevolutionCountDiff(prev)) * 1024 * 60 / float32(m.cadenceEventTimeDiff(prev)), false
 }
 
 // Distance travelled since the last message: (m)
 // circumference: Circumference of the wheel (m)
 func (m SpeedAndCadenceMessage) Distance(prev SpeedAndCadenceMessage, circumference float32) float32 {
-	return float32(m.SpeedRevolutionCountDiff(prev)) * circumference
+	if prev == nil {
+		return 0
+	}
+	return float32(m.speedRevolutionCountDiff(prev)) * circumference
 }
 
 // Speed: (m/s)
@@ -80,9 +88,9 @@ func (m SpeedAndCadenceMessage) Speed(prev SpeedAndCadenceMessage, circumference
 		return 0, false
 	}
 
-	if m.SpeedEventTimeDiff(prev) == 0 {
+	if m.speedEventTimeDiff(prev) == 0 {
 		return 0, true
 	}
 
-	return m.Distance(prev, circumference) / float32(m.SpeedEventTimeDiff(prev)), false
+	return m.Distance(prev, circumference) / float32(m.speedEventTimeDiff(prev)), false
 }
