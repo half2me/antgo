@@ -17,9 +17,9 @@ type AntDevice struct {
 	Driver AntDriver
 	Read chan message.AntPacket
 	Write chan message.AntPacket
-	stopper chan byte
+	stopper chan struct{}
 	decoder chan byte
-	done chan byte
+	done chan struct{}
 	buf []byte
 }
 
@@ -41,7 +41,7 @@ func (dev *AntDevice) Stop() {
 }
 
 func (dev *AntDevice) loop() {
-	defer func() {dev.done <- 1}()
+	defer func() {dev.done <- struct{}{}}()
 	defer dev.Driver.Close()
 	defer close(dev.decoder)
 	defer log.Println("Loop stopped!")
@@ -67,7 +67,7 @@ func (dev *AntDevice) loop() {
 }
 
 func (dev *AntDevice) decodeLoop() {
-	defer func() {dev.done <- 1}()
+	defer func() {dev.done <- struct{}{}}()
 	defer close(dev.Read)
 
 	for {
@@ -113,9 +113,9 @@ func NewDevice(driver AntDriver) *AntDevice {
 		Driver: driver,
 		Read: make(chan message.AntPacket),
 		Write: make(chan message.AntPacket),
-		stopper: make(chan byte),
+		stopper: make(chan struct{}),
 		decoder: make(chan byte),
-		done: make(chan byte),
+		done: make(chan struct{}),
 	}
 }
 

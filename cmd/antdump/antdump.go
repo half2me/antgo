@@ -8,27 +8,65 @@ import (
 	"flag"
 	"os"
 	"os/signal"
+	"github.com/gorilla/websocket"
+	"net/url"
 )
 
-func read(r chan message.AntPacket, log string) {
-	var f *os.File
-	var err error
-	if len(log) > 0 {
-		f, err = os.Create(log)
-		if err != nil {
-			panic(err)
+// Send messages on the input to all outputs
+func tee(in chan message.AntPacket, out []chan message.AntPacket) {
+	defer func() {
+		for _, v := range out {
+			close(v)
 		}
-		defer f.Close()
+	}()
+
+	for m := range in {
+		for _, v := range out {
+			v <- m
+		}
+	}
+}
+
+// Write ANT packets to a file
+func writeToFile(in chan message.AntPacket, filePath string) {
+	f, err := os.Create(filePath)
+	if err != nil {
+		log.Fatalln(err)
 	}
 
+	defer f.Close()
+
+	for m := range in {
+		f.Write(m)
+	}
+}
+
+func sendToWs(in chan message.AntPacket, host string) {
+	u := url.URL{Scheme: "ws", Host: host, Path: "/"}
+	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
+	if err != nil {
+		log.Fatalln(err)
+		return
+	}
+	defer c.Close()
+	defer c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+
+	for m := range in {
+		werr := c.WriteMessage(websocket.BinaryMessage, []byte(m))
+		if werr != nil {
+			log.Println("write:", werr)
+		}
+	}
+}
+
+func filter(in chan message.AntPacket, out chan message.AntPacket) {
 	var prevPower message.PowerMessage = nil
 	var prevSnC message.SpeedAndCadenceMessage = nil
-	for e := range r {
-		if len(log) > 0 {
-			f.Write(e)
-		}
 
+	for e := range in {
 		if e.Class() == message.MESSAGE_TYPE_BROADCAST {
+			out <- e
+
 			msg := message.AntBroadcastMessage(e)
 			switch msg.DeviceType() {
 			case message.DEVICE_TYPE_SPEED_AND_CADENCE:
@@ -91,10 +129,13 @@ func main() {
 
 	defer device.Stop()
 
+	filtered := make(chan message.AntPacket)
+	go filter(device.Read, filtered)
+
 	go read(device.Read, *outFile)
 	device.StartRxScanMode()
 
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-	<-c
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt)
+	<-interrupt
 }
