@@ -26,7 +26,7 @@ type JsonSnCMessage struct {
 }
 
 // Send messages on the input to all outputs
-func tee(in <-chan interface{}, out []chan<- interface{}) {
+func tee(in <-chan []byte, out []chan<- []byte) {
 	defer func() {
 		for _, v := range out {
 			close(v)
@@ -72,9 +72,11 @@ func sendToWs(in <-chan []byte, host string) {
 	}
 }
 
-func decode(in <-chan message.AntPacket, out chan []byte) {
+func decode(in <-chan message.AntPacket, out chan []byte, wheel float32) {
 	var prevPower message.PowerMessage = nil
 	var prevSnC message.SpeedAndCadenceMessage = nil
+
+	defer close(out)
 
 	for e := range in {
 		if e.Class() == message.MESSAGE_TYPE_BROADCAST {
@@ -83,14 +85,14 @@ func decode(in <-chan message.AntPacket, out chan []byte) {
 
 			switch msg.DeviceType() {
 			case message.DEVICE_TYPE_SPEED_AND_CADENCE:
-				cad, stall := message.SpeedAndCadenceMessage(msg).Cadence(prevSnC)
-				speed, stall2 := message.SpeedAndCadenceMessage(msg).Speed(prevSnC, 0.98)
-				dist := message.SpeedAndCadenceMessage(msg).Distance(prevSnC, 0.98)
+				cad, cad_stall := message.SpeedAndCadenceMessage(msg).Cadence(prevSnC)
+				speed, speed_stall := message.SpeedAndCadenceMessage(msg).Speed(prevSnC, wheel)
+				dist := message.SpeedAndCadenceMessage(msg).Distance(prevSnC, wheel)
 				dec[msg.DeviceNumber()] = JsonSnCMessage{
-					cad,
-					stall,
 					speed,
-					stall2,
+					speed_stall,
+					cad,
+					cad_stall,
 					dist,
 				}
 				prevSnC = message.SpeedAndCadenceMessage(msg)
@@ -101,6 +103,8 @@ func decode(in <-chan message.AntPacket, out chan []byte) {
 						pow,
 					}
 					prevPower = message.PowerMessage(msg)
+				} else {
+					continue
 				}
 			default:
 				continue
@@ -117,19 +121,15 @@ func decode(in <-chan message.AntPacket, out chan []byte) {
 
 func show(in <-chan []byte) {
 	for m := range in {
-		var dat map[string]interface{}
-		if err := json.Unmarshal(m, &dat); err != nil {
-			log.Println(err)
-		} else {
-			fmt.Println(dat)
-		}
+		fmt.Println(string(m))
 	}
 }
 
 func main() {
 	drv := flag.String("driver", "file", "Specify the Driver to use: [usb, serial, file, debug]")
 	pid := flag.Int("pid", 0x1008, "When using the USB driver specify pid of the dongle (i.e.: 0x1008")
-	inFile := flag.String("infile", "", "File to read ANT+ data from.")
+	inFile := flag.String("infile", "capture/123.cap", "File to read ANT+ data from.")
+	wheel := flag.Int("wheel", 98, "Wheel circumference in mm")
 	flag.String("outfile", "", "File to dump ANT+ data to.")
 	flag.Parse()
 
@@ -152,6 +152,10 @@ func main() {
 	}
 
 	defer device.Stop()
+
+	p := make(chan []byte)
+	go decode(device.Read, p, float32(*wheel)/100)
+	go show(p)
 
 	device.StartRxScanMode()
 
