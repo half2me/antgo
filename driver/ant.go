@@ -33,7 +33,7 @@ func (dev *AntDevice) Start() (e error) {
 }
 
 func (dev *AntDevice) Stop() {
-	dev.stopper <- 1
+	dev.stopper <- struct{}{}
 
 	// Wait for loops to finish
 	<- dev.done

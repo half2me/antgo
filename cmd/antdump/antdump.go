@@ -2,7 +2,6 @@ package main
 
 import (
 "log"
-"fmt"
 "github.com/half2me/antgo/driver"
 "github.com/half2me/antgo/message"
 	"flag"
@@ -10,10 +9,24 @@ import (
 	"os/signal"
 	"github.com/gorilla/websocket"
 	"net/url"
+	"encoding/json"
+	"fmt"
 )
 
+type JsonPowerMessage struct {
+	Power float32 `json:"power"`
+}
+
+type JsonSnCMessage struct {
+	Speed float32 `json:"speed"`
+	SpeedStall bool `json:"speed_stall"`
+	Cadence float32 `json:"cadence"`
+	CadenceStall bool `json:"cadence_stall"`
+	Distance float32 `json:"distance"`
+}
+
 // Send messages on the input to all outputs
-func tee(in chan message.AntPacket, out []chan message.AntPacket) {
+func tee(in <-chan interface{}, out []chan<- interface{}) {
 	defer func() {
 		for _, v := range out {
 			close(v)
@@ -28,7 +41,7 @@ func tee(in chan message.AntPacket, out []chan message.AntPacket) {
 }
 
 // Write ANT packets to a file
-func writeToFile(in chan message.AntPacket, filePath string) {
+func writeToFile(in <-chan message.AntPacket, filePath string) {
 	f, err := os.Create(filePath)
 	if err != nil {
 		log.Fatalln(err)
@@ -41,7 +54,7 @@ func writeToFile(in chan message.AntPacket, filePath string) {
 	}
 }
 
-func sendToWs(in chan message.AntPacket, host string) {
+func sendToWs(in <-chan []byte, host string) {
 	u := url.URL{Scheme: "ws", Host: host, Path: "/"}
 	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
@@ -52,61 +65,72 @@ func sendToWs(in chan message.AntPacket, host string) {
 	defer c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 
 	for m := range in {
-		werr := c.WriteMessage(websocket.BinaryMessage, []byte(m))
+		werr := c.WriteMessage(websocket.TextMessage, m)
 		if werr != nil {
 			log.Println("write:", werr)
 		}
 	}
 }
 
-func filter(in chan message.AntPacket, out chan message.AntPacket) {
+func decode(in <-chan message.AntPacket, out chan []byte) {
 	var prevPower message.PowerMessage = nil
 	var prevSnC message.SpeedAndCadenceMessage = nil
 
 	for e := range in {
 		if e.Class() == message.MESSAGE_TYPE_BROADCAST {
-			out <- e
-
 			msg := message.AntBroadcastMessage(e)
+			dec := make(map[uint16]interface{})
+
 			switch msg.DeviceType() {
 			case message.DEVICE_TYPE_SPEED_AND_CADENCE:
 				cad, stall := message.SpeedAndCadenceMessage(msg).Cadence(prevSnC)
-				if !stall {
-					fmt.Printf("(%d) %f rpm\n", msg.DeviceNumber(), cad)
-				} else {
-					fmt.Printf("(%d) - rpm\n", msg.DeviceNumber())
-				}
-
-				dist := message.SpeedAndCadenceMessage(msg).Distance(prevSnC, 0.98)
-				if dist > 0.001 {
-					fmt.Printf("(%d) %f m\n", msg.DeviceNumber(), dist)
-				} else {
-					fmt.Printf("(%d) - m\n", msg.DeviceNumber())
-				}
-
 				speed, stall2 := message.SpeedAndCadenceMessage(msg).Speed(prevSnC, 0.98)
-				if !stall2 {
-					fmt.Printf("(%d) %f m/s\n", msg.DeviceNumber(), speed)
-				} else {
-					fmt.Printf("(%d) - m/s\n", msg.DeviceNumber())
+				dist := message.SpeedAndCadenceMessage(msg).Distance(prevSnC, 0.98)
+				dec[msg.DeviceNumber()] = JsonSnCMessage{
+					cad,
+					stall,
+					speed,
+					stall2,
+					dist,
 				}
-
 				prevSnC = message.SpeedAndCadenceMessage(msg)
 			case message.DEVICE_TYPE_POWER:
-				pow := message.PowerMessage(msg).AveragePower(prevPower)
-				fmt.Printf("(%d) %d W\n", msg.DeviceNumber(), int16(pow))
-				prevPower = message.PowerMessage(msg)
+				if message.PowerMessage(msg).DataPageNumber() == 0x10 {
+					pow := message.PowerMessage(msg).AveragePower(prevPower)
+					dec[msg.DeviceNumber()] = JsonPowerMessage{
+						pow,
+					}
+					prevPower = message.PowerMessage(msg)
+				}
+			default:
+				continue
+			}
+
+			if j, err := json.Marshal(dec); err != nil {
+				log.Println(err)
+			} else {
+				out <- j
 			}
 		}
 	}
 }
 
+func show(in <-chan []byte) {
+	for m := range in {
+		var dat map[string]interface{}
+		if err := json.Unmarshal(m, &dat); err != nil {
+			log.Println(err)
+		} else {
+			fmt.Println(dat)
+		}
+	}
+}
+
 func main() {
-	drv := flag.String("driver", "usb", "Specify the Driver to use: [usb, serial, file, debug]")
-	flag.Bool("raw", false, "Do not attempt to decode ANT+ Broadcast messages")
+	drv := flag.String("driver", "file", "Specify the Driver to use: [usb, serial, file, debug]")
 	pid := flag.Int("pid", 0x1008, "When using the USB driver specify pid of the dongle (i.e.: 0x1008")
 	inFile := flag.String("infile", "", "File to read ANT+ data from.")
-	outFile := flag.String("outfile", "", "File to dump ANT+ data to.")
+	flag.String("outfile", "", "File to dump ANT+ data to.")
 	flag.Parse()
 
 	var device *driver.AntDevice
@@ -120,7 +144,7 @@ func main() {
 		log.Fatalln("Unknown driver specified!")
 	}
 
-	err := device.Start()
+	err := device.Start();
 
 	if err != nil {
 		log.Fatalln(err)
@@ -129,10 +153,6 @@ func main() {
 
 	defer device.Stop()
 
-	filtered := make(chan message.AntPacket)
-	go filter(device.Read, filtered)
-
-	go read(device.Read, *outFile)
 	device.StartRxScanMode()
 
 	interrupt := make(chan os.Signal, 1)
