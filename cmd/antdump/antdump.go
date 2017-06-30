@@ -54,7 +54,7 @@ func writeToFile(in <-chan message.AntPacket, filePath string) {
 	}
 }
 
-func sendToWs(in <-chan []byte, host string) {
+func sendRawToWs(in <-chan message.AntPacket, host string) {
 	u := url.URL{Scheme: "ws", Host: host, Path: "/"}
 	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
@@ -65,7 +65,7 @@ func sendToWs(in <-chan []byte, host string) {
 	defer c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 
 	for m := range in {
-		werr := c.WriteMessage(websocket.TextMessage, m)
+		werr := c.WriteMessage(websocket.BinaryMessage, m)
 		if werr != nil {
 			log.Println("write:", werr)
 		}
@@ -129,7 +129,7 @@ func main() {
 	drv := flag.String("driver", "file", "Specify the Driver to use: [usb, serial, file, debug]")
 	pid := flag.Int("pid", 0x1008, "When using the USB driver specify pid of the dongle (i.e.: 0x1008")
 	inFile := flag.String("infile", "capture/123.cap", "File to read ANT+ data from.")
-	wheel := flag.Int("wheel", 98, "Wheel circumference in mm")
+	//wheel := flag.Int("wheel", 98, "Wheel circumference in mm")
 	flag.String("outfile", "", "File to dump ANT+ data to.")
 	flag.Parse()
 
@@ -153,9 +153,8 @@ func main() {
 
 	defer device.Stop()
 
-	p := make(chan []byte)
-	go decode(device.Read, p, float32(*wheel)/100)
-	go show(p)
+	//go decode(device.Read, p, float32(*wheel)/100)
+	go sendRawToWs(device.Read, "localhost:8080")
 
 	device.StartRxScanMode()
 
