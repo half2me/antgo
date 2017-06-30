@@ -7,6 +7,12 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+func decode() {
+	for m := range wsIn {
+		log.Printf("recv: %s", m)
+	}
+}
+
 func wsFunction(rw http.ResponseWriter, r *http.Request) {
 	c, err := upgrader.Upgrade(rw, r, nil)
 	if err != nil {
@@ -16,13 +22,15 @@ func wsFunction(rw http.ResponseWriter, r *http.Request) {
 	defer c.Close()
 
 	for {
-		_, message, err := c.ReadMessage()
+		mt, message, err := c.ReadMessage()
 		if err != nil {
 			log.Println("read:", err)
 			break
 		}
-		log.Printf("recv: %s", message)
-		c.WriteMessage(websocket.TextMessage, []byte("Hey there :)"))
+
+		if mt == websocket.TextMessage {
+			wsIn <- message
+		}
 	}
 }
 
@@ -35,6 +43,8 @@ var upgrader = websocket.Upgrader{
 }
 
 func main() {
+	defer close(wsIn)
+	go decode()
 	flag.Parse()
 	http.HandleFunc("/", wsFunction)
 	log.Fatal(http.ListenAndServe(*addr, nil))
