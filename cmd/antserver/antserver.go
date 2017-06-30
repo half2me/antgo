@@ -8,62 +8,92 @@ import (
 	"github.com/half2me/antgo/message"
 	"encoding/json"
 	"fmt"
+	"sync"
+	"time"
 )
 
-type JsonPowerMessage struct {
-	Power float32 `json:"power"`
+type Dup struct {
+	data map[message.AntPacket]struct{}
+	mtx sync.Mutex
 }
 
-type JsonSnCMessage struct {
-	Speed float32 `json:"speed"`
-	SpeedStall bool `json:"speed_stall"`
-	Cadence float32 `json:"cadence"`
-	CadenceStall bool `json:"cadence_stall"`
-	Distance float32 `json:"distance"`
+func (d *Dup) Lock() {
+	d.mtx.Lock()
+}
+
+func (d *Dup) UnLock() {
+	d.mtx.Unlock()
+}
+
+// Returns true if message is new, and adds it to the cache. If false, message is already listed
+func (d *Dup) Test(m message.AntPacket) (ok bool) {
+	d.Lock()
+	defer d.UnLock()
+	if _, exists := d.data[m]; !exists {
+		ok = true
+		d.data[m] = struct{}{}
+		go func(){
+			// Clean out of cache in 10 sec
+			time.Sleep(time.Second * 10)
+			d.Lock()
+			defer d.UnLock()
+			delete(d.data, m)
+		}()
+	}
+
+	return
+}
+
+type JsonMessage struct {
+	Speed float32 `json:"speed,omitempty"`
+	SpeedStall bool `json:"speed_stall,omitempty"`
+	Cadence float32 `json:"cadence,omitempty"`
+	CadenceStall bool `json:"cadence_stall,omitempty"`
+	TotalDistance float32 `json:"total_distance,omitempty"`
+	Power float32 `json:"power,omitempty"`
+}
+
+type statT struct {
+	lastSncMessage message.SpeedAndCadenceMessage
+	lastPowMessage message.PowerMessage
+	json JsonMessage
 }
 
 func decode(in <-chan message.AntPacket, out chan []byte, wheel float32) {
-	var prevPower message.PowerMessage = nil
-	var prevSnC message.SpeedAndCadenceMessage = nil
-
 	defer close(out)
 
 	for e := range in {
 		if e.Class() == message.MESSAGE_TYPE_BROADCAST {
-			msg := message.AntBroadcastMessage(e)
-			dec := make(map[uint16]interface{})
-
-			switch msg.DeviceType() {
-			case message.DEVICE_TYPE_SPEED_AND_CADENCE:
-				cad, cad_stall := message.SpeedAndCadenceMessage(msg).Cadence(prevSnC)
-				speed, speed_stall := message.SpeedAndCadenceMessage(msg).Speed(prevSnC, wheel)
-				dist := message.SpeedAndCadenceMessage(msg).Distance(prevSnC, wheel)
-				dec[msg.DeviceNumber()] = JsonSnCMessage{
-					speed,
-					speed_stall,
-					cad,
-					cad_stall,
-					dist,
-				}
-				prevSnC = message.SpeedAndCadenceMessage(msg)
-			case message.DEVICE_TYPE_POWER:
-				if message.PowerMessage(msg).DataPageNumber() == 0x10 {
-					pow := message.PowerMessage(msg).AveragePower(prevPower)
-					dec[msg.DeviceNumber()] = JsonPowerMessage{
-						pow,
+			if dup.Test(e) {
+				msg := message.AntBroadcastMessage(e)
+				if s, ok := stat[msg.DeviceNumber()]; ok {
+					switch msg.DeviceType() {
+					case message.DEVICE_TYPE_SPEED_AND_CADENCE:
+						prev := s.lastSncMessage
+						snc := message.SpeedAndCadenceMessage(msg)
+						s.json.TotalDistance += snc.Distance(prev, wheel)
+						s.json.Cadence, s.json.CadenceStall = snc.Cadence(prev)
+						s.json.Speed, s.json.SpeedStall = snc.Speed(prev, wheel)
+						s.lastSncMessage = snc
+					case message.DEVICE_TYPE_POWER:
+						prev := stat[msg.DeviceNumber()].lastPowMessage
+						pm := message.PowerMessage(msg)
+						if pm.DataPageNumber() == 0x10 {
+							s.json.Power= pm.AveragePower(prev)
+							s.lastPowMessage = pm
+						} else {
+							continue
+						}
+					default:
+						continue
 					}
-					prevPower = message.PowerMessage(msg)
-				} else {
-					continue
-				}
-			default:
-				continue
-			}
 
-			if j, err := json.Marshal(dec); err != nil {
-				log.Println(err)
-			} else {
-				out <- j
+					if j, err := json.Marshal(s.json); err != nil {
+						log.Println(err)
+					} else {
+						out <- j
+					}
+				}
 			}
 		}
 	}
@@ -104,6 +134,15 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
 		return true
 	},
+}
+
+var dup = Dup {
+	data: make(map[message.AntPacket]struct{}),
+}
+
+var stat = map[uint16]*statT{
+	123: {}, // only allow packets from these IDs
+	124: {},
 }
 
 func main() {
