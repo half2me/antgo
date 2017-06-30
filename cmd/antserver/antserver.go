@@ -13,7 +13,7 @@ import (
 )
 
 type Dup struct {
-	data map[message.AntPacket]struct{}
+	data map[string]struct{}
 	mtx sync.Mutex
 }
 
@@ -29,15 +29,15 @@ func (d *Dup) UnLock() {
 func (d *Dup) Test(m message.AntPacket) (ok bool) {
 	d.Lock()
 	defer d.UnLock()
-	if _, exists := d.data[m]; !exists {
+	if _, exists := d.data[string(m)]; !exists {
 		ok = true
-		d.data[m] = struct{}{}
+		d.data[string(m)] = struct{}{}
 		go func(){
 			// Clean out of cache in 10 sec
 			time.Sleep(time.Second * 10)
 			d.Lock()
 			defer d.UnLock()
-			delete(d.data, m)
+			delete(d.data, string(m))
 		}()
 	}
 
@@ -137,7 +137,7 @@ var upgrader = websocket.Upgrader{
 }
 
 var dup = Dup {
-	data: make(map[message.AntPacket]struct{}),
+	data: make(map[string]struct{}),
 }
 
 var stat = map[uint16]*statT{
