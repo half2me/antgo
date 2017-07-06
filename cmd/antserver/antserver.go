@@ -50,6 +50,7 @@ type JsonMessage struct {
 	Cadence float32 `json:"cadence,omitempty"`
 	CadenceStall bool `json:"cadence_stall,omitempty"`
 	TotalDistance float32 `json:"total_distance,omitempty"`
+	DistanceDelta float32 `json:"distance_delta,omitempty"`
 	Power float32 `json:"power,omitempty"`
 }
 
@@ -72,6 +73,7 @@ func decode(in <-chan message.AntPacket, out chan []byte, wheel float32) {
 						prev := s.lastSncMessage
 						snc := message.SpeedAndCadenceMessage(msg)
 						s.json.TotalDistance += snc.Distance(prev, wheel)
+						s.json.DistanceDelta = snc.Distance(prev, wheel)
 						s.json.Cadence, s.json.CadenceStall = snc.Cadence(prev)
 						s.json.Speed, s.json.SpeedStall = snc.Speed(prev, wheel)
 						s.lastSncMessage = snc
