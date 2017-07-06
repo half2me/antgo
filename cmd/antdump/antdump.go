@@ -9,7 +9,6 @@ import (
 	"os/signal"
 	"github.com/gorilla/websocket"
 	"net/url"
-	"encoding/json"
 	"fmt"
 )
 
@@ -50,34 +49,56 @@ func sendToWs(in <-chan message.AntPacket, done chan<- struct{}) {
 	}
 }
 
-func printToTerminal(in <-chan message.AntPacket) {
-	for m := range in {
-		fmt.Println(m)
-	}
-}
-
-func filter(in <-chan message.AntPacket, out chan<- message.AntPacket) {
-	defer close(out)
-
-	for e := range in {
-		if e.Class() == message.MESSAGE_TYPE_BROADCAST {
-			msg := message.AntBroadcastMessage(e)
-
-			switch msg.DeviceType() {
-			case message.DEVICE_TYPE_SPEED_AND_CADENCE:
-				out <- e
-			case message.DEVICE_TYPE_POWER:
-				if message.PowerMessage(msg).DataPageNumber() == 0x10 {
-					out <- e
-				}
+func filter(m message.AntPacket) (allow bool) {
+	if m.Class() == message.MESSAGE_TYPE_BROADCAST {
+		msg := message.AntBroadcastMessage(m)
+		switch msg.DeviceType() {
+		case message.DEVICE_TYPE_SPEED_AND_CADENCE:
+			allow = true
+		case message.DEVICE_TYPE_POWER:
+			if message.PowerMessage(msg).DataPageNumber() == 0x10 {
+				allow = true
 			}
 		}
 	}
+	return
 }
 
 func loop(in <-chan message.AntPacket, done chan<- struct{}) {
 	defer func() {done<-struct {}{}}()
 
+	outs := make([]chan message.AntPacket, 0, 2)
+
+	//File
+	if len(*outfile) > 0 {
+		c := make(chan message.AntPacket)
+		cdone := make(chan struct{})
+		go writeToFile(c, cdone)
+		defer func() {<-cdone}()
+		outs = append(outs, c)
+	}
+
+	// Ws
+	if len(*wsAddr) > 0 {
+		c := make(chan message.AntPacket)
+		cdone := make(chan struct{})
+		go sendToWs(c, cdone)
+		defer func() {<-cdone}()
+		outs = append(outs, c)
+	}
+
+	defer func() {for _, c := range outs {close(c)}}()
+
+	for m := range in {
+		if filter(m) {
+			if ! *silent {
+				fmt.Println(m)
+			}
+			for _, c := range outs {
+				c <- m
+			}
+		}
+	}
 }
 
 var drv = flag.String("driver", "file", "Specify the Driver to use: [usb, serial, file, debug]")
@@ -109,7 +130,7 @@ func main() {
 
 	done := make(chan struct{})
 	go loop(device.Read, done)
-
+	defer func() {<-done}()
 	defer device.Stop()
 
 	device.StartRxScanMode()
