@@ -11,9 +11,6 @@ matrix:
         apt:
           packages:
             - libusb-1.0-0-dev
-            - libusb-1.0-0-dev:i386
-            - gcc-multilib
-            - g++-multilib
     - os: osx
       sudo: false
       osx_image: xcode8.3
@@ -30,7 +27,7 @@ env:
 
 script:
   - GOARCH=amd64 go build -o "bin/antdump-${TRAVIS_OS_NAME}-x64" -i cmd/antdump/antdump.go
-  - if [[ "$TRAVIS_OS_NAME" != "osx" ]]; then GOARCH=386 go build -o "bin/antdump-${TRAVIS_OS_NAME}-x86" -i cmd/antdump/antdump.go ; fi
+  - GOARCH=amd64 go build -o "bin/antserver-${TRAVIS_OS_NAME}-x64" -i cmd/antserver/antserver.go
 
 deploy:
   skip_cleanup: true
