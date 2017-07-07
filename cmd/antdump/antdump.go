@@ -2,73 +2,115 @@ package main
 
 import (
 "log"
-"fmt"
 "github.com/half2me/antgo/driver"
 "github.com/half2me/antgo/message"
 	"flag"
 	"os"
 	"os/signal"
+	"github.com/gorilla/websocket"
+	"net/url"
+	"fmt"
 )
 
-func read(r chan message.AntPacket, log string) {
-	var f *os.File
-	var err error
-	if len(log) > 0 {
-		f, err = os.Create(log)
-		if err != nil {
-			panic(err)
-		}
-		defer f.Close()
+// Write ANT packets to a file
+func writeToFile(in <-chan message.AntPacket, done chan<- struct{}) {
+	defer func() {done<-struct {}{}}()
+	f, err := os.Create(*outfile)
+	if err != nil {
+		log.Fatalln(err)
 	}
 
-	var prevPower message.PowerMessage = nil
-	var prevSnC message.SpeedAndCadenceMessage = nil
-	for e := range r {
-		if len(log) > 0 {
-			f.Write(e)
+	defer f.Close()
+
+	for m := range in {
+		f.Write(m)
+	}
+}
+
+func sendToWs(in <-chan message.AntPacket, done chan<- struct{}) {
+	defer func() {done<-struct {}{}}()
+	u, errp := url.Parse(*wsAddr)
+	if errp != nil {
+		log.Fatalln(errp)
+		return
+	}
+
+	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
+	if err != nil {
+		log.Fatalln(err)
+		return
+	}
+
+	defer c.Close()
+	defer c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+
+	for m := range in {
+		if e := c.WriteMessage(websocket.BinaryMessage, m); e != nil {
+			log.Println("write:", e)
 		}
+	}
+}
 
-		if e.Class() == message.MESSAGE_TYPE_BROADCAST {
-			msg := message.AntBroadcastMessage(e)
-			switch msg.DeviceType() {
-			case message.DEVICE_TYPE_SPEED_AND_CADENCE:
-				cad, stall := message.SpeedAndCadenceMessage(msg).Cadence(prevSnC)
-				if !stall {
-					fmt.Printf("(%d) %f rpm\n", msg.DeviceNumber(), cad)
-				} else {
-					fmt.Printf("(%d) - rpm\n", msg.DeviceNumber())
-				}
+func filter(m message.AntPacket) (allow bool) {
+	if m.Class() == message.MESSAGE_TYPE_BROADCAST {
+		msg := message.AntBroadcastMessage(m)
+		switch msg.DeviceType() {
+		case message.DEVICE_TYPE_SPEED_AND_CADENCE:
+			allow = true
+		case message.DEVICE_TYPE_POWER:
+			if message.PowerMessage(msg).DataPageNumber() == 0x10 {
+				allow = true
+			}
+		}
+	}
+	return
+}
 
-				dist := message.SpeedAndCadenceMessage(msg).Distance(prevSnC, 0.98)
-				if dist > 0.001 {
-					fmt.Printf("(%d) %f m\n", msg.DeviceNumber(), dist)
-				} else {
-					fmt.Printf("(%d) - m\n", msg.DeviceNumber())
-				}
+func loop(in <-chan message.AntPacket, done chan<- struct{}) {
+	defer func() {done<-struct {}{}}()
 
-				speed, stall2 := message.SpeedAndCadenceMessage(msg).Speed(prevSnC, 0.98)
-				if !stall2 {
-					fmt.Printf("(%d) %f m/s\n", msg.DeviceNumber(), speed)
-				} else {
-					fmt.Printf("(%d) - m/s\n", msg.DeviceNumber())
-				}
+	outs := make([]chan message.AntPacket, 0, 2)
 
-				prevSnC = message.SpeedAndCadenceMessage(msg)
-			case message.DEVICE_TYPE_POWER:
-				pow := message.PowerMessage(msg).AveragePower(prevPower)
-				fmt.Printf("(%d) %d W\n", msg.DeviceNumber(), int16(pow))
-				prevPower = message.PowerMessage(msg)
+	//File
+	if len(*outfile) > 0 {
+		c := make(chan message.AntPacket)
+		cdone := make(chan struct{})
+		go writeToFile(c, cdone)
+		defer func() {<-cdone}()
+		outs = append(outs, c)
+	}
+
+	// Ws
+	if len(*wsAddr) > 0 {
+		c := make(chan message.AntPacket)
+		cdone := make(chan struct{})
+		go sendToWs(c, cdone)
+		defer func() {<-cdone}()
+		outs = append(outs, c)
+	}
+
+	defer func() {for _, c := range outs {close(c)}}()
+
+	for m := range in {
+		if filter(m) {
+			if ! *silent {
+				fmt.Println(m)
+			}
+			for _, c := range outs {
+				c <- m
 			}
 		}
 	}
 }
 
+var drv = flag.String("driver", "usb", "Specify the Driver to use: [usb, serial, file, debug]")
+var pid = flag.Int("pid", 0x1008, "When using the USB driver specify pid of the dongle (i.e.: 0x1008")
+var inFile = flag.String("infile", "", "File to read ANT+ data from.")
+var outfile = flag.String("outfile", "", "File to dump ANT+ data to.")
+var wsAddr = flag.String("ws", "", "Upload ANT+ data to a websocket server at address:...")
+var silent = flag.Bool("silent", false, "Don't show ANT+ data on terminal")
+
 func main() {
-	drv := flag.String("driver", "usb", "Specify the Driver to use: [usb, serial, file, debug]")
-	flag.Bool("raw", false, "Do not attempt to decode ANT+ Broadcast messages")
-	pid := flag.Int("pid", 0x1008, "When using the USB driver specify pid of the dongle (i.e.: 0x1008")
-	inFile := flag.String("infile", "", "File to read ANT+ data from.")
-	outFile := flag.String("outfile", "", "File to dump ANT+ data to.")
 	flag.Parse()
 
 	var device *driver.AntDevice
@@ -79,22 +121,23 @@ func main() {
 	case "file":
 		device = driver.NewDevice(driver.GetAntCaptureFile(*inFile))
 	default:
-		log.Fatalln("Unknown driver specified!")
+		panic("Unknown driver specified!")
 	}
 
-	err := device.Start()
+	err := device.Start();
 
 	if err != nil {
-		log.Fatalln(err)
-		return
+		panic(err)
 	}
 
+	done := make(chan struct{})
+	go loop(device.Read, done)
+	defer func() {<-done}()
 	defer device.Stop()
 
-	go read(device.Read, *outFile)
 	device.StartRxScanMode()
 
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-	<-c
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt)
+	<-interrupt
 }

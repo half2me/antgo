@@ -92,5 +92,5 @@ func (m SpeedAndCadenceMessage) Speed(prev SpeedAndCadenceMessage, circumference
 		return 0, true
 	}
 
-	return m.Distance(prev, circumference) / float32(m.speedEventTimeDiff(prev)), false
+	return m.Distance(prev, circumference) * 1024 / float32(m.speedEventTimeDiff(prev)), false
 }
