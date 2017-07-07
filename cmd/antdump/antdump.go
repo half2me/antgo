@@ -31,12 +31,14 @@ func sendToWs(in <-chan message.AntPacket, done chan<- struct{}) {
 	defer func() {done<-struct {}{}}()
 	u, errp := url.Parse(*wsAddr)
 	if errp != nil {
-		panic(errp)
+		log.Fatalln(errp)
+		return
 	}
 
 	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
-		panic(err)
+		log.Fatalln(err)
+		return
 	}
 
 	defer c.Close()
@@ -101,11 +103,11 @@ func loop(in <-chan message.AntPacket, done chan<- struct{}) {
 	}
 }
 
-var drv = flag.String("driver", "file", "Specify the Driver to use: [usb, serial, file, debug]")
+var drv = flag.String("driver", "usb", "Specify the Driver to use: [usb, serial, file, debug]")
 var pid = flag.Int("pid", 0x1008, "When using the USB driver specify pid of the dongle (i.e.: 0x1008")
 var inFile = flag.String("infile", "", "File to read ANT+ data from.")
 var outfile = flag.String("outfile", "", "File to dump ANT+ data to.")
-var wsAddr = flag.String("uploadwsaddr", "", "Upload ANT+ data to a websocket server at address:...")
+var wsAddr = flag.String("ws", "", "Upload ANT+ data to a websocket server at address:...")
 var silent = flag.Bool("silent", false, "Don't show ANT+ data on terminal")
 
 func main() {
