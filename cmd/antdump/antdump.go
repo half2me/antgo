@@ -94,7 +94,7 @@ func loop(in <-chan message.AntPacket, done chan<- struct{}) {
 	for m := range in {
 		if filter(m) {
 			if ! *silent {
-				fmt.Println(m)
+				fmt.Println(message.AntBroadcastMessage(m))
 			}
 			for _, c := range outs {
 				c <- m
