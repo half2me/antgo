@@ -18,6 +18,7 @@ func writeToFile(in <-chan message.AntPacket, done chan<- struct{}) {
 	f, err := os.Create(*outfile)
 	if err != nil {
 		log.Fatalln(err)
+		return
 	}
 
 	defer f.Close()
@@ -47,6 +48,9 @@ func sendToWs(in <-chan message.AntPacket, done chan<- struct{}) {
 	for m := range in {
 		if e := c.WriteMessage(websocket.BinaryMessage, m); e != nil {
 			log.Println("write:", e)
+			if ! *persistent {
+				return
+			}
 		}
 	}
 }
@@ -109,6 +113,7 @@ var inFile = flag.String("infile", "", "File to read ANT+ data from.")
 var outfile = flag.String("outfile", "", "File to dump ANT+ data to.")
 var wsAddr = flag.String("ws", "", "Upload ANT+ data to a websocket server at address:...")
 var silent = flag.Bool("silent", false, "Don't show ANT+ data on terminal")
+var persistent = flag.Bool("persistent", false, "Don't exit on websocket upload errors")
 
 func main() {
 	flag.Parse()
