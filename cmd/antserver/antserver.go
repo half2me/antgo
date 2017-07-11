@@ -12,9 +12,11 @@ import (
 	"time"
 )
 
+// A simple cache for deduplicating incoming packets
 type Dup struct {
 	data map[string]struct{}
 	mtx sync.Mutex
+	timeout uint
 }
 
 func (d *Dup) Lock() {
@@ -33,8 +35,8 @@ func (d *Dup) Test(m message.AntPacket) (ok bool) {
 		ok = true
 		d.data[string(m)] = struct{}{}
 		go func(){
-			// Clean out of cache in 10 sec
-			time.Sleep(time.Second * 10)
+			// Clean out of cache in 5 sec
+			time.Sleep(time.Second * time.Duration(d.timeout))
 			d.Lock()
 			defer d.UnLock()
 			delete(d.data, string(m))
@@ -140,6 +142,7 @@ var upgrader = websocket.Upgrader{
 
 var dup = Dup {
 	data: make(map[string]struct{}),
+	timeout: 5,
 }
 
 var stat = map[uint16]*statT{

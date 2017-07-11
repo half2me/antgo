@@ -9,6 +9,7 @@ pacman --noconfirm -S \
     mingw64/mingw-w64-x86_64-libusb && \
 go version
 go get github.com/half2me/antgo/... && \
+go test ./... && \
 go build -o antdump-win64.exe -i cmd/antdump/antdump.go && \
 go build -o antserver-win64.exe -i cmd/antserver/antserver.go && \
 echo "Build complete!" #
