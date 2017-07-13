@@ -103,24 +103,44 @@ func decode(in <-chan message.AntPacket, out chan []byte, wheel float32) {
 	}
 }
 
-func wsFunction(rw http.ResponseWriter, r *http.Request) {
+func registerSink(c chan []byte) (closer chan struct{}) {
+	return make(chan struct{})
+}
+
+func wsHandler(rw http.ResponseWriter, r *http.Request) {
 	c, err := upgrader.Upgrade(rw, r, nil)
 	if err != nil {
 		log.Print("upgrade:", err)
 		return
 	}
 	defer c.Close()
+	defer func(){log.Println("Closing ws connection")}()
 
-	for {
-		mt, m, err := c.ReadMessage()
-		if err != nil {
-			log.Println("read:", err)
-			break
+	// Decide if source or sink
+	if mt, m, err := c.ReadMessage(); err == nil && mt == websocket.TextMessage {
+		switch string(m) {
+		case "source":
+			for {
+				if mt, m, err := c.ReadMessage(); err == nil && mt == websocket.BinaryMessage {
+					antIn <- message.AntPacket(m)
+				} else {
+					log.Println("read:", err)
+					break
+				}
+			}
+		case "sink":
+			ch := make(chan []byte, 4)
+			closer := registerSink(ch)
+			defer func(){closer<- struct{}{}}()
+			for dat := range ch {
+				c.WriteMessage(websocket.TextMessage, dat)
+			}
+		default:
+			c.WriteMessage(websocket.TextMessage, []byte("Bad initial message, should be sink or source"))
+			log.Fatalln("Bad initial message, should be sink or source")
 		}
-
-		if mt == websocket.BinaryMessage {
-			antIn <- message.AntPacket(m)
-		}
+	} else {
+		log.Fatalln("Initial message not received or incorrect format!")
 	}
 }
 
@@ -155,6 +175,6 @@ func main() {
 	go decode(antIn, out, 0.98)
 	go pr(out)
 	flag.Parse()
-	http.HandleFunc("/", wsFunction)
+	http.HandleFunc("/", wsHandler)
 	log.Fatal(http.ListenAndServe(*addr, nil))
 }
