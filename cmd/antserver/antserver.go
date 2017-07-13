@@ -92,7 +92,9 @@ func decode(in <-chan message.AntPacket, out chan []byte, wheel float32) {
 						continue
 					}
 
-					if j, err := json.Marshal(s.json); err != nil {
+					if j, err := json.Marshal(map[uint16]JsonMessage{
+						msg.DeviceNumber(): s.json,
+					}); err != nil {
 						log.Println(err)
 					} else {
 						out <- j
@@ -213,7 +215,8 @@ var dup = Dup {
 
 var stat = map[uint16]*statT{
 	123: {}, // only allow packets from these IDs
-	124: {},
+	456: {},
+	789: {},
 }
 
 var sinks = sinkStore{
