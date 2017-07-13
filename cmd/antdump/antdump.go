@@ -45,6 +45,11 @@ func sendToWs(in <-chan message.AntPacket, done chan<- struct{}) {
 	defer c.Close()
 	defer c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 
+	// Register as source
+	if err := c.WriteMessage(websocket.TextMessage, []byte("source")); err != nil {
+		return
+	}
+
 	for m := range in {
 		if e := c.WriteMessage(websocket.BinaryMessage, m); e != nil {
 			log.Println("write:", e)
