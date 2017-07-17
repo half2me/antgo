@@ -92,7 +92,9 @@ func decode(in <-chan message.AntPacket, out chan []byte, wheel float32) {
 						continue
 					}
 
-					if j, err := json.Marshal(s.json); err != nil {
+					if j, err := json.Marshal(map[uint16]JsonMessage{
+						msg.DeviceNumber(): s.json,
+					}); err != nil {
 						log.Println(err)
 					} else {
 						out <- j
@@ -103,29 +105,51 @@ func decode(in <-chan message.AntPacket, out chan []byte, wheel float32) {
 	}
 }
 
-func wsFunction(rw http.ResponseWriter, r *http.Request) {
+func wsHandler(rw http.ResponseWriter, r *http.Request) {
 	c, err := upgrader.Upgrade(rw, r, nil)
 	if err != nil {
 		log.Print("upgrade:", err)
 		return
 	}
 	defer c.Close()
+	defer func(){log.Println("Closing ws connection")}()
 
-	for {
-		mt, m, err := c.ReadMessage()
-		if err != nil {
-			log.Println("read:", err)
-			break
-		}
+	// Decide if source or sink
+	if mt, m, err := c.ReadMessage(); err == nil && mt == websocket.TextMessage {
+		switch string(m) {
+		case "source":
+			log.Println("Source connected!")
+			for {
+				if mt, m, err := c.ReadMessage(); err == nil && mt == websocket.BinaryMessage {
+					antIn <- message.AntPacket(m)
+				} else {
+					log.Println("read:", err)
+					break
+				}
+			}
+		case "sink":
+			log.Println("Sink connected!")
+			ch := make(chan []byte, 4)
+			sinks.RegisterSink(c.RemoteAddr().String(), ch)
+			defer func(){sinks.UnregisterSink(c.RemoteAddr().String())}()
 
-		if mt == websocket.BinaryMessage {
-			antIn <- message.AntPacket(m)
+			for dat := range ch {
+				if err := c.WriteMessage(websocket.TextMessage, dat); err != nil {
+					return
+				}
+			}
+		default:
+			c.WriteMessage(websocket.TextMessage, []byte("Bad initial message, should be sink or source"))
+			log.Fatalln("Bad initial message, should be sink or source")
 		}
+	} else {
+		log.Fatalln("Initial message not received or incorrect format!")
 	}
 }
 
 func pr(c chan []byte) {
 	for x:= range c {
+		sinks.Broadcast(x)
 		fmt.Println(string(x))
 	}
 }
@@ -133,6 +157,50 @@ func pr(c chan []byte) {
 var antIn chan message.AntPacket = make(chan message.AntPacket, 16)
 var out chan []byte = make(chan []byte)
 var addr = flag.String("addr", "localhost:8080", "http service address")
+
+type sinkStore struct {
+	sinks map[string]chan []byte
+	mutex sync.Mutex
+}
+
+func (s *sinkStore) RegisterSink(addr string, c chan []byte) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	if _, ok := s.sinks[addr]; ok == true {
+		// This sink is already registered
+		delete(s.sinks, addr)
+	}
+
+	s.sinks[addr] = c
+}
+
+func (s *sinkStore) UnregisterSink(addr string) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	if _, ok := s.sinks[addr]; ok == true {
+		delete(s.sinks, addr)
+	}
+}
+
+func (s *sinkStore) Broadcast(msg []byte) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	for _, v := range s.sinks {
+		v <- msg
+	}
+}
+
+func (s *sinkStore) CloseAll() {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	for _, v := range s.sinks {
+		close(v)
+	}
+}
 
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
@@ -147,7 +215,12 @@ var dup = Dup {
 
 var stat = map[uint16]*statT{
 	123: {}, // only allow packets from these IDs
-	124: {},
+	456: {},
+	789: {},
+}
+
+var sinks = sinkStore{
+	sinks: make(map[string]chan []byte),
 }
 
 func main() {
@@ -155,6 +228,6 @@ func main() {
 	go decode(antIn, out, 0.98)
 	go pr(out)
 	flag.Parse()
-	http.HandleFunc("/", wsFunction)
+	http.HandleFunc("/", wsHandler)
 	log.Fatal(http.ListenAndServe(*addr, nil))
 }
