@@ -36,11 +36,11 @@ func (m SpeedAndCadenceMessage) CumulativeSpeedRevolutionCount() (num uint16) {
 	return
 }
 
-func (m SpeedAndCadenceMessage) speedEventTimeDiff(prev SpeedAndCadenceMessage) uint16 {
+func (m SpeedAndCadenceMessage) SpeedEventTimeDiff(prev SpeedAndCadenceMessage) uint16 {
 	return m.SpeedEventTime() - prev.SpeedEventTime()
 }
 
-func (m SpeedAndCadenceMessage) cadenceEventTimeDiff(prev SpeedAndCadenceMessage) uint16 {
+func (m SpeedAndCadenceMessage) CadenceEventTimeDiff(prev SpeedAndCadenceMessage) uint16 {
 	return m.CadenceEventTime() - prev.CadenceEventTime()
 }
 
