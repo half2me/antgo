@@ -62,11 +62,11 @@ func (m SpeedAndCadenceMessage) Cadence(prev SpeedAndCadenceMessage) (cadence fl
 		return 0, false
 	}
 
-	if m.cadenceEventTimeDiff(prev) == 0 {
+	if m.CadenceEventTimeDiff(prev) == 0 {
 		return 0, true
 	}
 
-	return float32(m.CadenceRevolutionCountDiff(prev)) * 1024 * 60 / float32(m.cadenceEventTimeDiff(prev)), false
+	return float32(m.CadenceRevolutionCountDiff(prev)) * 1024 * 60 / float32(m.CadenceEventTimeDiff(prev)), false
 }
 
 // Distance travelled since the last message: (m)
@@ -88,9 +88,9 @@ func (m SpeedAndCadenceMessage) Speed(prev SpeedAndCadenceMessage, circumference
 		return 0, false
 	}
 
-	if m.speedEventTimeDiff(prev) == 0 {
+	if m.SpeedEventTimeDiff(prev) == 0 {
 		return 0, true
 	}
 
-	return m.Distance(prev, circumference) * 1024 / float32(m.speedEventTimeDiff(prev)), false
+	return m.Distance(prev, circumference) * 1024 / float32(m.SpeedEventTimeDiff(prev)), false
 }
