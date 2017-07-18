@@ -37,10 +37,16 @@ func (m SpeedAndCadenceMessage) CumulativeSpeedRevolutionCount() (num uint16) {
 }
 
 func (m SpeedAndCadenceMessage) SpeedEventTimeDiff(prev SpeedAndCadenceMessage) uint16 {
+	if prev == nil {
+		return 0
+	}
 	return m.SpeedEventTime() - prev.SpeedEventTime()
 }
 
 func (m SpeedAndCadenceMessage) CadenceEventTimeDiff(prev SpeedAndCadenceMessage) uint16 {
+	if prev == nil {
+		return 0
+	}
 	return m.CadenceEventTime() - prev.CadenceEventTime()
 }
 
