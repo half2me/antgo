@@ -38,40 +38,40 @@ func sendToWs(in <-chan message.AntPacket, done chan<- struct{}) {
 	var c *websocket.Conn
 	var err error
 
-	for { // Connect to the websocket server
-		if c, _, err = websocket.DefaultDialer.Dial(u.String(), nil); err != nil {
-			if ! *persistent {
-				panic(err.Error())
-			}
+wsconnect: // Connect to the websocket server
+	if c, _, err = websocket.DefaultDialer.Dial(u.String(), nil); err != nil {
+		if ! *persistent {
 			log.Fatalln(err.Error())
-		} else {
-			// Register as source
-			if err := c.WriteMessage(websocket.TextMessage, []byte("source")); err != nil {
-				c.Close()
-				if ! *persistent {
-					panic(err.Error())
-				}
-				log.Fatalln(err.Error())
-				continue
-			}
-
-			// Send ANT+ messages
-			for m := range in {
-				if e := c.WriteMessage(websocket.BinaryMessage, m); e != nil {
-					log.Fatalln(e.Error())
-					c.Close()
-					if ! *persistent {
-						panic(err.Error())
-					}
-					continue
-				}
-			}
 		}
-		time.Sleep(time.Second) // Sleep a bit, then retry
+		log.Println(err.Error())
+		time.Sleep(time.Second)
+		goto wsconnect
 	}
 
-	defer c.Close()
-	defer c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+	// Register as source
+	if err := c.WriteMessage(websocket.TextMessage, []byte("source")); err != nil {
+		c.Close()
+		if ! *persistent {
+			log.Fatalln(err.Error())
+		}
+		log.Println(err.Error())
+		goto wsconnect
+	}
+
+	// Send ANT+ messages
+	for m := range in {
+		if e := c.WriteMessage(websocket.BinaryMessage, m); e != nil {
+			c.Close()
+			if ! *persistent {
+				log.Fatalln(e.Error())
+			}
+			log.Println(e.Error())
+			goto wsconnect
+		}
+	}
+
+	c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "Antdump exiting"))
+	c.Close()
 }
 
 func filter(m message.AntPacket) (allow bool) {
@@ -136,6 +136,10 @@ var persistent = flag.Bool("persistent", false, "Don't panic on errors, keep try
 
 func main() {
 	flag.Parse()
+
+	if *persistent {
+		log.Println("Persistent mode actvated!")
+	}
 
 	var device *driver.AntDevice
 
