@@ -3,9 +3,20 @@ package message
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 )
 
 type PowerMessage AntBroadcastMessage
+
+func (m PowerMessage) String() (s string) {
+	if m.DataPageNumber() == 0x10 {
+		s = fmt.Sprintf("#: %d | %f rpm, %f W", m.EventCount(), m.InstantaneousCadence(), m.InstantaneousPower())
+	} else {
+		s = ""
+	}
+
+	return
+}
 
 // The specifies the type of message sent by the power sensor
 // Currently we only decode the standard Power-Only main data page (0x10)
@@ -22,7 +33,7 @@ func (m PowerMessage) EventCount() uint8 {
 // Using the previous message we can see the difference of the event counts. Since sensors increment
 // this value by 1 every time they generate an ANT+ message, we can use this value to get an idea of
 // how many frames were dropped since the last message.
-func (m PowerMessage) EventCountDiff(prev PowerMessage) uint8 {
+func (m PowerMessage) eventCountDiff(prev PowerMessage) uint8 {
 	return m.EventCount() - prev.EventCount()
 }
 
@@ -41,7 +52,7 @@ func (m PowerMessage) AccumulatedPower() (num uint16) {
 
 // Using the previous message, get the calculated Power from the difference of the accumulated values.
 // This gives a more precise measurement and should be used instead of the instantaneous values. (W)
-func (m PowerMessage) AccumulatedPowerDiff(prev PowerMessage) (uint16) {
+func (m PowerMessage) accumulatedPowerDiff(prev PowerMessage) (uint16) {
 	return m.AccumulatedPower() - prev.AccumulatedPower()
 }
 
@@ -63,5 +74,5 @@ func (m PowerMessage) AveragePower(prev PowerMessage) float32 {
 		return float32(m.InstantaneousPower())
 	}
 
-	return float32(m.AccumulatedPowerDiff(prev)) / float32(m.EventCountDiff(prev))
+	return float32(m.accumulatedPowerDiff(prev)) / float32(m.eventCountDiff(prev))
 }
