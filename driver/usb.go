@@ -1,25 +1,28 @@
 package driver
 
 import (
-	"github.com/kylelemons/gousb/usb"
+	"github.com/google/gousb"
 	"log"
 	"errors"
 	"github.com/half2me/antgo/message"
 )
 
 type UsbDevice struct {
-	vid, pid int
-	context  *usb.Context
-	device   *usb.Device
-	in, out  usb.Endpoint
+	vid, pid 	gousb.ID
+	context  	*gousb.Context
+	device   	*gousb.Device
+	closeIface	func()
+	intf		*gousb.Interface
+	in			*gousb.InEndpoint
+	out			*gousb.OutEndpoint
 }
 
 func (dev *UsbDevice) Open() (e error) {
 	log.Println("Opening USB device")
 
-	dev.context = usb.NewContext()
+	dev.context = gousb.NewContext()
 
-	dev.device, e = dev.context.OpenDeviceWithVidPid(dev.vid, dev.pid)
+	dev.device, e = dev.context.OpenDeviceWithVIDPID(dev.vid, dev.pid)
 
 	if e != nil {
 		return
@@ -30,12 +33,20 @@ func (dev *UsbDevice) Open() (e error) {
 		return
 	}
 
-	dev.in, e = dev.device.OpenEndpoint(1, 0, 0, uint8(1)|uint8(usb.ENDPOINT_DIR_IN))
+	// Claim default interface
+	dev.intf, dev.closeIface, e = dev.device.DefaultInterface()
 	if e != nil {
 		return
 	}
 
-	dev.out, e = dev.device.OpenEndpoint(1, 0, 0, uint8(1)|uint8(usb.ENDPOINT_DIR_OUT))
+	// Open an OUT endpoint.
+	dev.out, e = dev.intf.OutEndpoint(1)
+	if e != nil {
+		return
+	}
+
+	// Open an IN endpoint.
+	dev.in, e = dev.intf.InEndpoint(1)
 	if e != nil {
 		return
 	}
@@ -50,6 +61,10 @@ func (dev *UsbDevice) Close() {
 
 	dev.out.Write(message.CloseChannelMessage(0))
 	dev.out.Write(message.SystemResetMessage())
+
+	if dev.closeIface != nil {
+		dev.closeIface()
+	}
 
 	if dev.device != nil {
 		dev.device.Close()
@@ -73,7 +88,7 @@ func (dev *UsbDevice) BufferSize() int {
 	return 64 // replace with maxBufferSize query in google's gousb
 }
 
-func GetUsbDevice(vid, pid int) *UsbDevice {
+func GetUsbDevice(vid, pid gousb.ID) *UsbDevice {
 	return &UsbDevice{
 		vid: vid,
 		pid: pid,
