@@ -10,6 +10,7 @@ import (
 	"github.com/gorilla/websocket"
 	"net/url"
 	"fmt"
+	"time"
 )
 
 // Write ANT packets to a file
@@ -17,8 +18,7 @@ func writeToFile(in <-chan message.AntPacket, done chan<- struct{}) {
 	defer func() {done<-struct {}{}}()
 	f, err := os.Create(*outfile)
 	if err != nil {
-		log.Fatalln(err)
-		return
+		panic(err.Error())
 	}
 
 	defer f.Close()
@@ -32,32 +32,46 @@ func sendToWs(in <-chan message.AntPacket, done chan<- struct{}) {
 	defer func() {done<-struct {}{}}()
 	u, errp := url.Parse(*wsAddr)
 	if errp != nil {
-		log.Fatalln(errp)
-		return
+		panic(errp.Error())
 	}
 
-	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
-	if err != nil {
-		log.Fatalln(err)
-		return
-	}
+	var c *websocket.Conn
+	var err error
 
-	defer c.Close()
-	defer c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+wsconnect: // Connect to the websocket server
+	if c, _, err = websocket.DefaultDialer.Dial(u.String(), nil); err != nil {
+		if ! *persistent {
+			log.Fatalln(err.Error())
+		}
+		log.Println(err.Error())
+		time.Sleep(time.Second)
+		goto wsconnect
+	}
 
 	// Register as source
 	if err := c.WriteMessage(websocket.TextMessage, []byte("source")); err != nil {
-		return
+		c.Close()
+		if ! *persistent {
+			log.Fatalln(err.Error())
+		}
+		log.Println(err.Error())
+		goto wsconnect
 	}
 
+	// Send ANT+ messages
 	for m := range in {
 		if e := c.WriteMessage(websocket.BinaryMessage, m); e != nil {
-			log.Println("write:", e)
+			c.Close()
 			if ! *persistent {
-				return
+				log.Fatalln(e.Error())
 			}
+			log.Println(e.Error())
+			goto wsconnect
 		}
 	}
+
+	c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "Antdump exiting"))
+	c.Close()
 }
 
 func filter(m message.AntPacket) (allow bool) {
@@ -118,10 +132,14 @@ var inFile = flag.String("infile", "", "File to read ANT+ data from.")
 var outfile = flag.String("outfile", "", "File to dump ANT+ data to.")
 var wsAddr = flag.String("ws", "", "Upload ANT+ data to a websocket server at address:...")
 var silent = flag.Bool("silent", false, "Don't show ANT+ data on terminal")
-var persistent = flag.Bool("persistent", false, "Don't exit on websocket upload errors")
+var persistent = flag.Bool("persistent", false, "Don't panic on errors, keep trying")
 
 func main() {
 	flag.Parse()
+
+	if *persistent {
+		log.Println("Persistent mode actvated!")
+	}
 
 	var device *driver.AntDevice
 
@@ -134,10 +152,8 @@ func main() {
 		panic("Unknown driver specified!")
 	}
 
-	err := device.Start();
-
-	if err != nil {
-		panic(err)
+	if err := device.Start(); err != nil {
+		panic(err.Error())
 	}
 
 	done := make(chan struct{})
