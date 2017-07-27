@@ -1,20 +1,21 @@
 package main
 
 import (
-"log"
-"github.com/half2me/antgo/driver"
-"github.com/half2me/antgo/message"
+	"log"
+	"github.com/half2me/antgo/driver"
+	"github.com/half2me/antgo/message"
 	"flag"
 	"os"
 	"os/signal"
 	"github.com/gorilla/websocket"
 	"net/url"
 	"fmt"
+	"github.com/google/gousb"
 )
 
 // Write ANT packets to a file
 func writeToFile(in <-chan message.AntPacket, done chan<- struct{}) {
-	defer func() {done<-struct {}{}}()
+	defer func() { done <- struct{}{} }()
 	f, err := os.Create(*outfile)
 	if err != nil {
 		log.Fatalln(err)
@@ -29,7 +30,7 @@ func writeToFile(in <-chan message.AntPacket, done chan<- struct{}) {
 }
 
 func sendToWs(in <-chan message.AntPacket, done chan<- struct{}) {
-	defer func() {done<-struct {}{}}()
+	defer func() { done <- struct{}{} }()
 	u, errp := url.Parse(*wsAddr)
 	if errp != nil {
 		log.Fatalln(errp)
@@ -76,7 +77,7 @@ func filter(m message.AntPacket) (allow bool) {
 }
 
 func loop(in <-chan message.AntPacket, done chan<- struct{}) {
-	defer func() {done<-struct {}{}}()
+	defer func() { done <- struct{}{} }()
 
 	outs := make([]chan message.AntPacket, 0, 2)
 
@@ -85,7 +86,7 @@ func loop(in <-chan message.AntPacket, done chan<- struct{}) {
 		c := make(chan message.AntPacket)
 		cdone := make(chan struct{})
 		go writeToFile(c, cdone)
-		defer func() {<-cdone}()
+		defer func() { <-cdone }()
 		outs = append(outs, c)
 	}
 
@@ -94,11 +95,15 @@ func loop(in <-chan message.AntPacket, done chan<- struct{}) {
 		c := make(chan message.AntPacket)
 		cdone := make(chan struct{})
 		go sendToWs(c, cdone)
-		defer func() {<-cdone}()
+		defer func() { <-cdone }()
 		outs = append(outs, c)
 	}
 
-	defer func() {for _, c := range outs {close(c)}}()
+	defer func() {
+		for _, c := range outs {
+			close(c)
+		}
+	}()
 
 	for m := range in {
 		if filter(m) {
@@ -112,7 +117,7 @@ func loop(in <-chan message.AntPacket, done chan<- struct{}) {
 	}
 }
 
-var drv = flag.String("driver", "usb", "Specify the Driver to use: [usb, serial, file, debug]")
+var drv = flag.String("driver", "usb", "Specify the Driver to use: [usb, file]")
 var pid = flag.Int("pid", 0x1008, "When using the USB driver specify pid of the dongle (i.e.: 0x1008")
 var inFile = flag.String("infile", "", "File to read ANT+ data from.")
 var outfile = flag.String("outfile", "", "File to dump ANT+ data to.")
@@ -127,7 +132,7 @@ func main() {
 
 	switch *drv {
 	case "usb":
-		device = driver.NewDevice(driver.GetUsbDevice(0x0fcf, *pid))
+		device = driver.NewDevice(driver.GetUsbDevice(0x0fcf, gousb.ID(*pid)))
 	case "file":
 		device = driver.NewDevice(driver.GetAntCaptureFile(*inFile))
 	default:
@@ -135,14 +140,13 @@ func main() {
 	}
 
 	err := device.Start();
-
 	if err != nil {
 		panic(err)
 	}
 
 	done := make(chan struct{})
 	go loop(device.Read, done)
-	defer func() {<-done}()
+	defer func() { <-done }()
 	defer device.Stop()
 
 	device.StartRxScanMode()
