@@ -120,7 +120,10 @@ func loop(in <-chan message.AntPacket, done chan<- struct{}) {
 				fmt.Println(message.AntBroadcastMessage(m))
 			}
 			for _, c := range outs {
-				c <- m
+				select {
+				case c <- m:
+				default:
+				}
 			}
 		}
 	}
