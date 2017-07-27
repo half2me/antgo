@@ -120,7 +120,10 @@ func loop(in <-chan message.AntPacket, done chan<- struct{}) {
 				fmt.Println(message.AntBroadcastMessage(m))
 			}
 			for _, c := range outs {
-				c <- m
+				select {
+				case c <- m:
+				default:
+				}
 			}
 		}
 	}
@@ -142,12 +145,14 @@ func main() {
 	}
 
 	var device *driver.AntDevice
+	antIn := make(chan message.AntPacket)
+	antOut := make(chan message.AntPacket)
 
 	switch *drv {
 	case "usb":
-		device = driver.NewDevice(driver.GetUsbDevice(0x0fcf, *pid))
+		device = driver.NewDevice(driver.GetUsbDevice(0x0fcf, *pid), antIn, antOut)
 	case "file":
-		device = driver.NewDevice(driver.GetAntCaptureFile(*inFile))
+		device = driver.NewDevice(driver.GetAntCaptureFile(*inFile), antIn, antOut)
 	default:
 		panic("Unknown driver specified!")
 	}

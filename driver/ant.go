@@ -55,9 +55,7 @@ func (dev *AntDevice) loop() {
 			dev.Driver.Write(d)
 		default:
 			// Read from device
-			i, err := dev.Driver.Read(dev.buf)
-
-			if err == nil {
+			if i, err := dev.Driver.Read(dev.buf); err == nil {
 				for _, v := range dev.buf[:i] {
 					dev.decoder <- v
 				}
@@ -72,13 +70,9 @@ func (dev *AntDevice) decodeLoop() {
 
 	for {
 		// Wait for TX Sync
-		sync, ok := <- dev.decoder
-
-		if !ok {
+		if sync, ok := <- dev.decoder; !ok {
 			return
-		}
-
-		if sync != message.MESSAGE_TX_SYNC {
+		} else if sync != message.MESSAGE_TX_SYNC {
 			continue
 		}
 
@@ -92,27 +86,27 @@ func (dev *AntDevice) decodeLoop() {
 		buf := make([]byte, length+2)
 
 		for i := 0; i < int(length+2); i++ {
-			buf[i], ok = <- dev.decoder
-
-			if !ok {
+			if buf[i], ok = <- dev.decoder; !ok {
 				return
 			}
 		}
 
 		// Check message integrity
-		msg := message.AntPacket(append(message.AntPacket{message.MESSAGE_TX_SYNC, length}, buf...))
-
-		if msg.Valid() {
-			dev.Read <- msg
+		if msg := append(message.AntPacket{message.MESSAGE_TX_SYNC, length}, buf...); msg.Valid() {
+			// Here we use a best-effort send. If the read channel is full, message gets discarded
+			select {
+				case dev.Read <- msg:
+				default:
+			}
 		}
 	}
 }
 
-func NewDevice(driver AntDriver) *AntDevice {
+func NewDevice(driver AntDriver, read, write chan message.AntPacket) *AntDevice {
 	return &AntDevice {
 		Driver: driver,
-		Read: make(chan message.AntPacket),
-		Write: make(chan message.AntPacket),
+		Read: read,
+		Write: write,
 		stopper: make(chan struct{}),
 		decoder: make(chan byte),
 		done: make(chan struct{}),
