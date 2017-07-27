@@ -37,8 +37,7 @@ func sendToWs(in <-chan message.AntPacket, done chan<- struct{}) {
 
 	var c *websocket.Conn
 	var err error
-
-	ticker := time.NewTicker(time.Second * 2)
+	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
 wsconnect: // Connect to the websocket server
@@ -62,14 +61,32 @@ wsconnect: // Connect to the websocket server
 	}
 
 	// Send ANT+ messages or pings
-	c.SetWriteDeadline(time.Now().Add(time.Second * 5))
-	c.SetPongHandler(func(string) error { c.SetWriteDeadline(time.Now().Add(time.Second * 5)); return nil })
+	c.SetReadDeadline(time.Now().Add(time.Second * 5))
+	c.SetPongHandler(func(string) error {
+		log.Println("Got pong!")
+		c.SetReadDeadline(time.Now().Add(time.Second * 5))
+		return nil
+	})
 
-	select {
-		case msg, ok := <- in:
-			if !ok {
+	go func(){
+		for {
+			if typ, msg, err := c.ReadMessage(); err != nil {
+				log.Println(err.Error())
+				c.Close()
 				return
+			} else {
+				log.Println(typ, msg)
 			}
+		}
+	}()
+	for {
+		select {
+		case <- ticker.C:
+			log.Println("Sending ping")
+			c.WriteMessage(websocket.PingMessage, []byte{})
+		case msg, ok := <- in:
+			if !ok {return}
+			log.Println("sending msg")
 			if e := c.WriteMessage(websocket.BinaryMessage, msg); e != nil {
 				c.Close()
 				if ! *persistent {
@@ -78,17 +95,6 @@ wsconnect: // Connect to the websocket server
 				log.Println(e.Error())
 				goto wsconnect
 			}
-		case <- ticker.C:
-			c.WriteMessage(websocket.PingMessage, []byte{})
-	}
-	for m := range in {
-		if e := c.WriteMessage(websocket.BinaryMessage, m); e != nil {
-			c.Close()
-			if ! *persistent {
-				log.Fatalln(e.Error())
-			}
-			log.Println(e.Error())
-			goto wsconnect
 		}
 	}
 
