@@ -38,6 +38,9 @@ func sendToWs(in <-chan message.AntPacket, done chan<- struct{}) {
 	var c *websocket.Conn
 	var err error
 
+	ticker := time.NewTicker(time.Second * 2)
+	defer ticker.Stop()
+
 wsconnect: // Connect to the websocket server
 	if c, _, err = websocket.DefaultDialer.Dial(u.String(), nil); err != nil {
 		if ! *persistent {
@@ -58,7 +61,26 @@ wsconnect: // Connect to the websocket server
 		goto wsconnect
 	}
 
-	// Send ANT+ messages
+	// Send ANT+ messages or pings
+	c.SetWriteDeadline(time.Now().Add(time.Second * 5))
+	c.SetPongHandler(func(string) error { c.SetWriteDeadline(time.Now().Add(time.Second * 5)); return nil })
+
+	select {
+		case msg, ok := <- in:
+			if !ok {
+				return
+			}
+			if e := c.WriteMessage(websocket.BinaryMessage, msg); e != nil {
+				c.Close()
+				if ! *persistent {
+					log.Fatalln(e.Error())
+				}
+				log.Println(e.Error())
+				goto wsconnect
+			}
+		case <- ticker.C:
+			c.WriteMessage(websocket.PingMessage, []byte{})
+	}
 	for m := range in {
 		if e := c.WriteMessage(websocket.BinaryMessage, m); e != nil {
 			c.Close()
