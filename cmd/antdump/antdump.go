@@ -61,8 +61,8 @@ wsconnect: // Connect to the websocket server
 	}
 
 	// Setup pingpongs
-	c.SetReadDeadline(time.Now().Add(time.Second * 5))
-	c.SetPongHandler(func(string) error {c.SetReadDeadline(time.Now().Add(time.Second * 5)); return nil})
+	c.SetReadDeadline(time.Now().Add(time.Second * 3))
+	c.SetPongHandler(func(string) error {c.SetReadDeadline(time.Now().Add(time.Second * 3)); return nil})
 	go func(){for {if _, _, err := c.ReadMessage(); err != nil {c.Close(); return}}}()
 
 	// Send ANT+ messages or pings
