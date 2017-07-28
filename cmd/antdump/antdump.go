@@ -66,14 +66,13 @@ wsconnect: // Connect to the websocket server
 	go func(){for {if _, _, err := c.ReadMessage(); err != nil {c.Close(); return}}}()
 
 	// Send ANT+ messages or pings
+	log.Println("Connected to ws server!")
 	for {
 		select {
 		case <- ticker.C:
-			log.Println("Sending ping")
 			c.WriteMessage(websocket.PingMessage, []byte{})
 		case msg, ok := <- in:
 			if !ok {return}
-			log.Println("sending msg")
 			if e := c.WriteMessage(websocket.BinaryMessage, msg); e != nil {
 				c.Close()
 				if ! *persistent {
