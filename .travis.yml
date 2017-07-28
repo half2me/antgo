@@ -26,7 +26,7 @@ env:
     - CGO_ENABLED=1
 
 script:
-  - go test ./...
+  - go test -race ./...
 
 after_script:
   - GOARCH=amd64 go build -o "bin/antdump-${TRAVIS_OS_NAME}-x64" -i cmd/antdump/antdump.go
