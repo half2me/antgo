@@ -15,21 +15,6 @@ import (
 	"github.com/half2me/antgo/driver/file"
 )
 
-// Write ANT packets to a file
-func writeToFile(in <-chan message.AntPacket, done chan<- struct{}) {
-	defer func() {done<-struct {}{}}()
-	f, err := os.Create(*outfile)
-	if err != nil {
-		panic(err.Error())
-	}
-
-	defer f.Close()
-
-	for m := range in {
-		f.Write(m)
-	}
-}
-
 func sendToWs(in <-chan message.AntPacket, done chan<- struct{}) {
 	defer func() {done<-struct {}{}}()
 	u, errp := url.Parse(*wsAddr)
@@ -110,13 +95,13 @@ func loop(in <-chan message.AntPacket, done chan<- struct{}) {
 
 	outs := make([]chan message.AntPacket, 0, 2)
 
+	var f *file.AntCaptureFile
+
 	//File
 	if len(*outfile) > 0 {
-		c := make(chan message.AntPacket)
-		cdone := make(chan struct{})
-		go writeToFile(c, cdone)
-		defer func() {<-cdone}()
-		outs = append(outs, c)
+		f = file.GetAntCaptureFile(*outfile)
+		if e := f.Open(); e != nil {panic(e.Error())}
+		defer f.Close()
 	}
 
 	// Ws
@@ -140,6 +125,10 @@ func loop(in <-chan message.AntPacket, done chan<- struct{}) {
 				case c <- m:
 				default:
 				}
+			}
+
+			if f != nil {
+				f.Write(m)
 			}
 		}
 	}
@@ -175,7 +164,9 @@ func main() {
 		device.StartRxScanMode()
 	case "file":
 		f := file.GetAntCaptureFile(*inFile)
-		f.Open()
+		if e := f.Open(); e != nil {
+			panic(e.Error())
+		}
 		go f.ReadLoop(antIn, stopFile)
 		defer func(){stopFile <- struct{}{}}()
 	default:

@@ -17,6 +17,7 @@ type AntT struct {
 type AntCaptureFile struct {
 	path string
 	file *os.File
+	enc *gob.Encoder
 	dec *gob.Decoder
 	offset_t time.Time
 	open_t time.Time
@@ -25,6 +26,7 @@ type AntCaptureFile struct {
 func (f *AntCaptureFile) Open() (e error) {
 	f.file, e = os.Open(f.path)
 	f.dec = gob.NewDecoder(f.file)
+	f.enc = gob.NewEncoder(f.file)
 	f.open_t = time.Now()
 	return
 }
@@ -33,12 +35,16 @@ func (f *AntCaptureFile) Close() {
 	f.file.Close()
 }
 
+func (f *AntCaptureFile) Read() (a AntT, e error) {
+	e = f.dec.Decode(&a)
+	return
+}
+
 func (f *AntCaptureFile) ReadLoop(out chan message.AntPacket, stop chan struct{}) {
 	defer close(out)
 	defer f.Close()
-	var ant AntT
 	for {
-		if e := f.dec.Decode(&ant); e != nil {
+		if ant, e := f.Read(); e != nil {
 			if e == io.EOF {
 				// Loop at EOF
 				f.file.Seek(0, 0)
@@ -47,36 +53,38 @@ func (f *AntCaptureFile) ReadLoop(out chan message.AntPacket, stop chan struct{}
 				continue
 			}
 			panic(e.Error())
-		}
-
-		if f.offset_t.IsZero() {
-			// We initialize the first timestamp as an offset
-			f.offset_t = ant.Timestamp
-		}
-
-		openTimeDelta := time.Now().Sub(f.open_t)
-		packetTimeDelta := ant.Timestamp.Sub(f.offset_t)
-
-		waitFor := packetTimeDelta - openTimeDelta
-
-		if waitFor <= 0 {
-			// We can send the message right away
-			out <- ant.Data
 		} else {
-			t := time.NewTimer(waitFor)
-			select {
-			case <-t.C:
+			if f.offset_t.IsZero() {
+				// We initialize the first timestamp as an offset
+				f.offset_t = ant.Timestamp
+			}
+
+			openTimeDelta := time.Now().Sub(f.open_t)
+			packetTimeDelta := ant.Timestamp.Sub(f.offset_t)
+
+			waitFor := packetTimeDelta - openTimeDelta
+
+			if waitFor <= 0 {
+				// We can send the message right away
 				out <- ant.Data
-			case <- stop:
-				return
+			} else {
+				t := time.NewTimer(waitFor)
+				select {
+				case <-t.C:
+					out <- ant.Data
+				case <- stop:
+					return
+				}
 			}
 		}
 	}
 }
 
-func (f *AntCaptureFile) Write(b []byte) (int, error) {
-	// We ignore output
-	return len(b), nil
+func (f *AntCaptureFile) Write(packet message.AntPacket) error {
+	return f.enc.Encode(AntT {
+		Data: packet,
+		Timestamp: time.Now(),
+	})
 }
 
 func (f *AntCaptureFile) BufferSize() int {
