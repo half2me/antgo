@@ -6,7 +6,6 @@ import (
 	"time"
 	"github.com/half2me/antgo/message"
 	"encoding/gob"
-	"golang.org/x/tools/go/gcimporter15/testdata"
 )
 
 type AntT struct {
@@ -25,6 +24,14 @@ type AntCaptureFile struct {
 
 func (f *AntCaptureFile) Open() (e error) {
 	f.file, e = os.Open(f.path)
+	f.dec = gob.NewDecoder(f.file)
+	f.enc = gob.NewEncoder(f.file)
+	f.open_t = time.Now()
+	return
+}
+
+func (f *AntCaptureFile) Create() (e error) {
+	f.file, e = os.Create(f.path)
 	f.dec = gob.NewDecoder(f.file)
 	f.enc = gob.NewEncoder(f.file)
 	f.open_t = time.Now()
