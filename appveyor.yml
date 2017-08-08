@@ -4,16 +4,16 @@ clone_folder: C:\msys64\go\src\github.com\half2me\antgo
 
 install:
   - C:\msys64\usr\bin\bash.exe -lc "cd /go/src/github.com/half2me/antgo && ./av.sh"
-  - 7z a antgo-win64.zip C:\msys64\go\src\github.com\half2me\antgo\antserver-win64.exe C:\msys64\go\src\github.com\half2me\antgo\antdump-win64.exe C:\msys64\mingw64\bin\libusb-1.0.dll
+  - 7z a antgo-win.zip C:\msys64\go\src\github.com\half2me\antgo\antdump-win.exe C:\msys64\mingw64\bin\libusb-1.0.dll
 
 build: off
 
 artifacts:
-  - path: antgo-win64.zip
+  - path: antgo-win.zip
     name: binary
 
 deploy:
-  release: antdump-win64
+  release: antdump-win
   description: 'Antgo'
   provider: GitHub
   auth_token:
