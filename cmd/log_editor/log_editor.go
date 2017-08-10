@@ -9,7 +9,8 @@ import (
 	"fmt"
 )
 
-var fileName = flag.String("file", "", "File to open")
+var fileName = flag.String("in", "", "File to open")
+var outName = flag.String("out", "", "File to open")
 var skip = flag.Int("skip", 0, "How many packets to skip")
 var count = flag.Int("count", 0, "Read at most n packets (0 means unlimited)")
 
@@ -22,6 +23,16 @@ func main() {
 	}
 
 	defer file.Close()
+
+	var ofile *os.File
+	var enc *gob.Encoder
+
+	if len(*outName) > 0 {
+		var err error
+		if ofile, err = os.Create(*outName); err != nil {panic(err.Error())}
+		defer ofile.Close()
+		enc = gob.NewEncoder(ofile)
+	}
 
 	dec := gob.NewDecoder(file)
 	buf := file2.AntT{}
@@ -39,6 +50,11 @@ func main() {
 				if e == io.EOF {return} else {panic(e.Error())}
 			}
 			fmt.Printf("[%8d] %s\n", i, buf.String())
+			if enc != nil {
+				if e := enc.Encode(buf); e != nil {
+					panic(e.Error())
+				}
+			}
 		}
 	} else {
 		for i := 0; i < *count ;i++ {
@@ -46,6 +62,11 @@ func main() {
 				if e == io.EOF {return} else {panic(e.Error())}
 			}
 			fmt.Printf("[%8d] %s\n", i, buf.String())
+			if enc != nil {
+				if e := enc.Encode(buf); e != nil {
+					panic(e.Error())
+				}
+			}
 		}
 	}
 }
