@@ -11,7 +11,7 @@ type PowerMessage AntBroadcastMessage
 func (m PowerMessage) String() (s string) {
 	s = "[POW] "
 	if m.DataPageNumber() == 0x10 {
-		s += fmt.Sprintf("#%0.5d [CAD] %d | [PWR] %d", m.EventCount(), m.InstantaneousCadence(), m.InstantaneousPower())
+		s += fmt.Sprintf("%0.5d -> [CAD] %d | [PWR] %d", m.EventCount(), m.InstantaneousCadence(), m.InstantaneousPower())
 	} else {
 		s += "MAINTENANCE"
 	}

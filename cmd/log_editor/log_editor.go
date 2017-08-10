@@ -53,23 +53,9 @@ func main() {
 				if e == io.EOF {return} else {panic(e.Error())}
 			}
 
-			if len(*filterType) > 0 {
-				if buf.Data.Class() != message.MESSAGE_TYPE_BROADCAST {continue}
-				dt := message.AntBroadcastMessage(buf.Data).DeviceType()
-				switch *filterType {
-				case "snc":
-					if dt != message.DEVICE_TYPE_SPEED_AND_CADENCE {continue}
-				case "pow":
-					if dt != message.DEVICE_TYPE_POWER {continue}
-				}
-			}
+			if ! filter(buf.Data) {continue}
+			fmt.Printf("[%8d] %s \n", i, buf.String())
 
-			if *filterId > 0 {
-				if buf.Data.Class() != message.MESSAGE_TYPE_BROADCAST {continue}
-				if message.AntBroadcastMessage(buf.Data).DeviceNumber() != uint16(*filterId) {continue}
-			}
-
-			fmt.Printf("[%8d] %s\n", i, buf.String())
 			if enc != nil {
 				if e := enc.Encode(buf); e != nil {
 					panic(e.Error())
@@ -82,23 +68,9 @@ func main() {
 				if e == io.EOF {return} else {panic(e.Error())}
 			}
 
-			if len(*filterType) > 0 {
-				if buf.Data.Class() != message.MESSAGE_TYPE_BROADCAST {continue}
-				dt := message.AntBroadcastMessage(buf.Data).DeviceType()
-				switch *filterType {
-				case "snc":
-					if dt != message.DEVICE_TYPE_SPEED_AND_CADENCE {continue}
-				case "pow":
-					if dt != message.DEVICE_TYPE_POWER {continue}
-				}
-			}
+			if ! filter(buf.Data) {continue}
+			fmt.Printf("[%8d] %s \n", i, buf.String())
 
-			if *filterId > 0 {
-				if buf.Data.Class() != message.MESSAGE_TYPE_BROADCAST {continue}
-				if message.AntBroadcastMessage(buf.Data).DeviceNumber() != uint16(*filterId) {continue}
-			}
-
-			fmt.Printf("[%8d] %s\n", i, buf.String())
 			if enc != nil {
 				if e := enc.Encode(buf); e != nil {
 					panic(e.Error())
@@ -106,4 +78,24 @@ func main() {
 			}
 		}
 	}
+}
+
+func filter(a message.AntPacket) (ok bool) {
+	if a.Class() != message.MESSAGE_TYPE_BROADCAST {return}
+
+	if len(*filterType) > 0 {
+		dt := message.AntBroadcastMessage(a).DeviceType()
+		switch *filterType {
+		case "snc":
+			if dt != message.DEVICE_TYPE_SPEED_AND_CADENCE {return}
+		case "pow":
+			if dt != message.DEVICE_TYPE_POWER {return}
+		}
+	}
+
+	if *filterId > 0 {
+		if message.AntBroadcastMessage(a).DeviceNumber() != uint16(*filterId) {return}
+	}
+
+	return true
 }
