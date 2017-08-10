@@ -53,17 +53,23 @@ func (p AntPacket) Valid() bool {
 	return p.CalculateChecksum() == p[len(p)-1]
 }
 
-func (p AntBroadcastMessage) String() (s string) {
-	s = fmt.Sprintf("CH %d [%d] [%5s] ", p.Channel(), p.DeviceNumber(), DeviceTypes[p.DeviceType()])
+func (p AntBroadcastMessage) String() string {
+	var msg string
 
-	s += "["
-
-	for _, v := range p.Content() {
-		s += fmt.Sprintf(" %02X ", v)
+	switch p.DeviceType() {
+	case DEVICE_TYPE_SPEED_AND_CADENCE:
+		msg = SpeedAndCadenceMessage(p).String()
+	case DEVICE_TYPE_POWER:
+		msg = PowerMessage(p).String()
+	default:
+		msg = "["
+		for _, v := range p.Content() {
+			msg += fmt.Sprintf(" %02X ", v)
+		}
+		msg += "]"
 	}
 
-	s += "]"
-	return
+	return fmt.Sprintf("CH %d [%d] %s", p.Channel(), p.DeviceNumber(), msg)
 }
 
 func (p AntBroadcastMessage) Channel() uint8 {

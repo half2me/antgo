@@ -38,8 +38,3 @@ const (
 	DEVICE_TYPE_SPEED_AND_CADENCE = 0x79
 	DEVICE_TYPE_POWER = 0x0B
 )
-
-var DeviceTypes = map[byte]string {
-	DEVICE_TYPE_SPEED_AND_CADENCE: "S&C",
-	DEVICE_TYPE_POWER: "Power",
-}
