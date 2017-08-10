@@ -22,15 +22,27 @@ func (p AntPacket) String() (s string) {
 		m := AntBroadcastMessage(p)
 		s = fmt.Sprintf("[BRD] %s", m.String())
 	} else {
-		s = fmt.Sprintf("[%02X] [", p.Class())
-
-		for _, v := range p.Data() {
-			s += fmt.Sprintf(" %02X ", v)
-		}
-
-		s += "]"
+		s = p.RawString()
 	}
 
+	return
+}
+
+func (p AntPacket) RawString() (s string) {
+	s = fmt.Sprintf("[%02X] [", p.Class())
+
+	for _, v := range p.Data() {
+		s += fmt.Sprintf(" %02X ", v)
+	}
+
+	s += "]"
+	return
+}
+
+func (p AntPacket) RawHexString() (s string) {
+	for _, v := range p {
+		s += fmt.Sprintf("%02X ", v)
+	}
 	return
 }
 

@@ -81,6 +81,7 @@ func main() {
 }
 
 func filter(a message.AntPacket) (ok bool) {
+	if ! a.Valid() {panic("BAD CHECKSUM OMG!!!")}
 	if a.Class() != message.MESSAGE_TYPE_BROADCAST {return}
 
 	if len(*filterType) > 0 {
