@@ -6,11 +6,17 @@ import (
 	"time"
 	"github.com/half2me/antgo/message"
 	"encoding/gob"
+	"fmt"
 )
 
 type AntT struct {
 	Data message.AntPacket
 	Timestamp time.Time
+}
+
+func (a *AntT) String() string {
+	t := a.Timestamp
+	return fmt.Sprintf("[%02d:%02d:%02d:%03d] %s", t.Hour(), t.Minute(), t.Second(), t.Nanosecond() / 1000000, a.Data.String())
 }
 
 type AntCaptureFile struct {

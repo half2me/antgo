@@ -79,16 +79,12 @@ func (dev *AntDevice) decodeLoop() {
 		// Get content length (+1byte type + 1byte checksum)
 		length, ok := <- dev.decoder
 
-		if !ok {
-			return
-		}
+		if !ok {return}
 
 		buf := make([]byte, length+2)
 
 		for i := 0; i < int(length+2); i++ {
-			if buf[i], ok = <- dev.decoder; !ok {
-				return
-			}
+			if buf[i], ok = <- dev.decoder; !ok {return}
 		}
 
 		// Check message integrity

@@ -18,6 +18,17 @@ func (r Rssi) Value() (v int8) {
 }
 
 func (p AntPacket) String() (s string) {
+	if p.Class() == MESSAGE_TYPE_BROADCAST {
+		m := AntBroadcastMessage(p)
+		s = fmt.Sprintf("[BRD] %s", m.String())
+	} else {
+		s = p.RawString()
+	}
+
+	return
+}
+
+func (p AntPacket) RawString() (s string) {
 	s = fmt.Sprintf("[%02X] [", p.Class())
 
 	for _, v := range p.Data() {
@@ -25,6 +36,13 @@ func (p AntPacket) String() (s string) {
 	}
 
 	s += "]"
+	return
+}
+
+func (p AntPacket) RawHexString() (s string) {
+	for _, v := range p {
+		s += fmt.Sprintf("%02X ", v)
+	}
 	return
 }
 
@@ -47,19 +65,23 @@ func (p AntPacket) Valid() bool {
 	return p.CalculateChecksum() == p[len(p)-1]
 }
 
-func (p AntBroadcastMessage) String() (s string) {
-	s = fmt.Sprintf("CH: %d ", p.Channel())
-	s += fmt.Sprintf("[%d] ", p.DeviceNumber())
-	s += fmt.Sprintf("[%s] ", DeviceTypes[p.DeviceType()])
+func (p AntBroadcastMessage) String() string {
+	var msg string
 
-	s += "["
-
-	for _, v := range p.Content() {
-		s += fmt.Sprintf(" %02X ", v)
+	switch p.DeviceType() {
+	case DEVICE_TYPE_SPEED_AND_CADENCE:
+		msg = SpeedAndCadenceMessage(p).String()
+	case DEVICE_TYPE_POWER:
+		msg = PowerMessage(p).String()
+	default:
+		msg = "["
+		for _, v := range p.Content() {
+			msg += fmt.Sprintf(" %02X ", v)
+		}
+		msg += "]"
 	}
 
-	s += "]"
-	return
+	return fmt.Sprintf("CH %d [%d] %s", p.Channel(), p.DeviceNumber(), msg)
 }
 
 func (p AntBroadcastMessage) Channel() uint8 {
