@@ -18,13 +18,19 @@ func (r Rssi) Value() (v int8) {
 }
 
 func (p AntPacket) String() (s string) {
-	s = fmt.Sprintf("[%02X] [", p.Class())
+	if p.Class() == MESSAGE_TYPE_BROADCAST {
+		m := AntBroadcastMessage(p)
+		s = fmt.Sprintf("[BRD] %s", m.String())
+	} else {
+		s = fmt.Sprintf("[%02X] [", p.Class())
 
-	for _, v := range p.Data() {
-		s += fmt.Sprintf(" %02X ", v)
+		for _, v := range p.Data() {
+			s += fmt.Sprintf(" %02X ", v)
+		}
+
+		s += "]"
 	}
 
-	s += "]"
 	return
 }
 
@@ -48,9 +54,7 @@ func (p AntPacket) Valid() bool {
 }
 
 func (p AntBroadcastMessage) String() (s string) {
-	s = fmt.Sprintf("CH: %d ", p.Channel())
-	s += fmt.Sprintf("[%d] ", p.DeviceNumber())
-	s += fmt.Sprintf("[%s] ", DeviceTypes[p.DeviceType()])
+	s = fmt.Sprintf("CH %d [%d] [%5s] ", p.Channel(), p.DeviceNumber(), DeviceTypes[p.DeviceType()])
 
 	s += "["
 

@@ -4,6 +4,7 @@ import (
 	"testing"
 	"os"
 	"time"
+	"fmt"
 )
 
 func TestGetAntCaptureFile(t *testing.T) {
