@@ -1,4 +1,4 @@
-package driver
+package usb
 
 import (
 	"github.com/kylelemons/gousb/usb"

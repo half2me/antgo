@@ -11,22 +11,9 @@ import (
 	"net/url"
 	"fmt"
 	"time"
+	"github.com/half2me/antgo/driver/usb"
+	"github.com/half2me/antgo/driver/file"
 )
-
-// Write ANT packets to a file
-func writeToFile(in <-chan message.AntPacket, done chan<- struct{}) {
-	defer func() {done<-struct {}{}}()
-	f, err := os.Create(*outfile)
-	if err != nil {
-		panic(err.Error())
-	}
-
-	defer f.Close()
-
-	for m := range in {
-		f.Write(m)
-	}
-}
 
 func sendToWs(in <-chan message.AntPacket, done chan<- struct{}) {
 	defer func() {done<-struct {}{}}()
@@ -108,13 +95,13 @@ func loop(in <-chan message.AntPacket, done chan<- struct{}) {
 
 	outs := make([]chan message.AntPacket, 0, 2)
 
+	var f *file.AntCaptureFile
+
 	//File
 	if len(*outfile) > 0 {
-		c := make(chan message.AntPacket)
-		cdone := make(chan struct{})
-		go writeToFile(c, cdone)
-		defer func() {<-cdone}()
-		outs = append(outs, c)
+		f = file.GetAntCaptureFile(*outfile)
+		if e := f.Open(); e != nil {panic(e.Error())}
+		defer f.Close()
 	}
 
 	// Ws
@@ -139,6 +126,10 @@ func loop(in <-chan message.AntPacket, done chan<- struct{}) {
 				default:
 				}
 			}
+
+			if f != nil {
+				f.Write(m)
+			}
 		}
 	}
 }
@@ -151,6 +142,8 @@ var wsAddr = flag.String("ws", "", "Upload ANT+ data to a websocket server at ad
 var silent = flag.Bool("silent", false, "Don't show ANT+ data on terminal")
 var persistent = flag.Bool("persistent", false, "Don't panic on errors, keep trying")
 
+var stopFile = make(chan struct{})
+
 func main() {
 	flag.Parse()
 
@@ -158,29 +151,29 @@ func main() {
 		log.Println("Persistent mode actvated!")
 	}
 
-	var device *driver.AntDevice
 	antIn := make(chan message.AntPacket)
 	antOut := make(chan message.AntPacket)
+	done := make(chan struct{})
+	defer func() {<-done}()
 
 	switch *drv {
 	case "usb":
-		device = driver.NewDevice(driver.GetUsbDevice(0x0fcf, *pid), antIn, antOut)
+		device := driver.NewDevice(usb.GetUsbDevice(0x0fcf, *pid), antIn, antOut)
+		if err := device.Start(); err != nil {panic(err.Error())}
+		defer device.Stop()
+		device.StartRxScanMode()
 	case "file":
-		device = driver.NewDevice(driver.GetAntCaptureFile(*inFile), antIn, antOut)
+		f := file.GetAntCaptureFile(*inFile)
+		if e := f.Open(); e != nil {
+			panic(e.Error())
+		}
+		go f.ReadLoop(antIn, stopFile)
+		defer func(){stopFile <- struct{}{}}()
 	default:
 		panic("Unknown driver specified!")
 	}
 
-	if err := device.Start(); err != nil {
-		panic(err.Error())
-	}
-
-	done := make(chan struct{})
-	go loop(device.Read, done)
-	defer func() {<-done}()
-	defer device.Stop()
-
-	device.StartRxScanMode()
+	go loop(antIn, done)
 
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
