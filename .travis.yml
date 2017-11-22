@@ -1,5 +1,5 @@
 language: go
-go: 1.8
+go: 1.9
 
 matrix:
   fast_finish: true
@@ -13,7 +13,6 @@ matrix:
             - libusb-1.0-0-dev
     - os: osx
       sudo: false
-      osx_image: xcode8.3
       cache:
         apt: true
         directories:
