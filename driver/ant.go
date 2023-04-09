@@ -1,125 +1,127 @@
 package driver
 
 import (
+	"bufio"
+	"context"
+	"errors"
+	"fmt"
 	"github.com/half2me/antgo/message"
-	"log"
+	"io"
 )
 
-type AntDriver interface {
-	Open() error
+type Driver interface {
 	Close()
 	Read(b []byte) (int, error)
 	Write(b []byte) (int, error)
 	BufferSize() int
 }
 
-type AntDevice struct {
-	Driver AntDriver
-	Read chan message.AntPacket
-	Write chan message.AntPacket
-	stopper chan struct{}
-	decoder chan byte
-	done chan struct{}
-	buf []byte
+type Node struct {
+	driver Driver
+	reader *bufio.Reader
 }
 
-func (dev *AntDevice) Start() (e error) {
-	dev.buf = make([]byte, dev.Driver.BufferSize())
-	log.Println("Starting Device")
-	e = dev.Driver.Open()
-	go dev.loop()
-	go dev.decodeLoop()
+func NewNode(driver Driver) Node {
+	return Node{
+		driver: driver,
+		reader: bufio.NewReaderSize(driver, driver.BufferSize()),
+	}
+}
+
+func (node Node) ReadMsg() (p message.AntPacket, err error) {
+	// 1st byte is TX SYNC
+	sync, err := node.reader.ReadByte()
+	if err != nil {
+		return
+	}
+	if sync != message.MESSAGE_TX_SYNC {
+		return p, fmt.Errorf("expected TX SYNC, got %02X", sync)
+	}
+
+	// 2nd byte is payload length
+	length, err := node.reader.ReadByte()
+	if err != nil {
+		return
+	}
+
+	// length +1 byte type + 1 byte checksum
+	buf := make([]byte, length+2)
+
+	// Get message content and checksum
+	_, err = io.ReadFull(node.reader, buf)
+	if err != nil {
+		return p, err
+	}
+
+	p = append(message.AntPacket{message.MESSAGE_TX_SYNC, length}, buf...)
+
+	// Check message integrity
+	if !p.Valid() {
+		err = errors.New("invalid checksum")
+	}
+
 	return
 }
 
-func (dev *AntDevice) Stop() {
-	dev.stopper <- struct{}{}
-
-	// Wait for loops to finish
-	<- dev.done
-	<- dev.done
+func (node Node) expectAck() error {
+	msg, err := node.ReadMsg()
+	if err != nil {
+		return err
+	}
+	if msg.Class() != message.MESSAGE_CHANNEL_ACK {
+		return fmt.Errorf("expected ACK, got %02X", msg.Class())
+	}
+	return nil
 }
 
-func (dev *AntDevice) loop() {
-	defer func() {dev.done <- struct{}{}}()
-	defer dev.Driver.Close()
-	defer close(dev.decoder)
-	defer log.Println("Loop stopped!")
-	log.Println("Loop Started")
+func (node Node) WriteMsg(msg message.AntPacket) (err error) {
+	_, err = node.driver.Write(msg)
+	if err != nil {
+		return err
+	}
+	return node.expectAck()
+}
 
-	for {
-		select {
-		case <- dev.stopper:
-			return
-		case d := <- dev.Write:
-			dev.Driver.Write(d)
-		default:
-			// Read from device
-			if i, err := dev.Driver.Read(dev.buf); err == nil {
-				for _, v := range dev.buf[:i] {
-					dev.decoder <- v
-				}
-			}
+func (node Node) StartRxScanMode() error {
+	messages := []message.AntPacket{
+		message.SystemResetMessage(),
+		message.SetNetworkKeyMessage(0, []byte(message.ANTPLUS_NETWORK_KEY)),
+		message.AssignChannelMessage(0, message.CHANNEL_TYPE_ONEWAY_RECEIVE),
+		message.SetChannelIdMessage(0),
+		message.SetChannelRfFrequencyMessage(0, 2457),
+		message.EnableExtendedMessagesMessage(true),
+		// message.LibConfigMessage(true, true, true),
+		message.OpenRxScanModeMessage(),
+	}
+
+	for _, msg := range messages {
+		err := node.WriteMsg(msg)
+		if err != nil {
+			return err
 		}
 	}
+	return nil
 }
 
-func (dev *AntDevice) decodeLoop() {
-	defer func() {dev.done <- struct{}{}}()
-	defer close(dev.Read)
-
+func (node Node) DumpBroadcastMessages(ctx context.Context, messages chan message.AntBroadcastMessage) {
 	for {
-		// Wait for TX Sync
-		if sync, ok := <- dev.decoder; !ok {
+		select {
+		case <-ctx.Done():
 			return
-		} else if sync != message.MESSAGE_TX_SYNC {
+		default:
+		}
+
+		m, err := node.ReadMsg()
+		if err != nil {
+			// ignore errors
 			continue
 		}
 
-		// Get content length (+1byte type + 1byte checksum)
-		length, ok := <- dev.decoder
-
-		if !ok {
-			return
+		// skip non-broadcast messages
+		if m.Class() != message.MESSAGE_TYPE_BROADCAST {
+			continue
 		}
 
-		buf := make([]byte, length+2)
-
-		for i := 0; i < int(length+2); i++ {
-			if buf[i], ok = <- dev.decoder; !ok {
-				return
-			}
-		}
-
-		// Check message integrity
-		if msg := append(message.AntPacket{message.MESSAGE_TX_SYNC, length}, buf...); msg.Valid() {
-			// Here we use a best-effort send. If the read channel is full, message gets discarded
-			select {
-				case dev.Read <- msg:
-				default:
-			}
-		}
+		messages <- message.AntBroadcastMessage(m)
 	}
-}
-
-func NewDevice(driver AntDriver, read, write chan message.AntPacket) *AntDevice {
-	return &AntDevice {
-		Driver: driver,
-		Read: read,
-		Write: write,
-		stopper: make(chan struct{}),
-		decoder: make(chan byte),
-		done: make(chan struct{}),
-	}
-}
-
-func (dev *AntDevice) StartRxScanMode() {
-	dev.Write <- message.SystemResetMessage()
-	dev.Write <- message.SetNetworkKeyMessage(0, []byte(message.ANTPLUS_NETWORK_KEY))
-	dev.Write <- message.AssignChannelMessage(0, message.CHANNEL_TYPE_ONEWAY_RECEIVE)
-	dev.Write <- message.SetChannelIdMessage(0)
-	dev.Write <- message.SetChannelRfFrequencyMessage(0, 2457)
-	dev.Write <- message.EnableExtendedMessagesMessage(true)
-	//dev.Write <- message.LibConfigMessage(true, true, true)
-	dev.Write <- message.OpenRxScanModeMessage()
 }

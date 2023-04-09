@@ -1,19 +1,19 @@
 package message
 
 import (
-	"fmt"
-	"encoding/binary"
 	"bytes"
+	"encoding/binary"
+	"fmt"
 )
 
 type AntPacket []byte
 type AntBroadcastMessage AntPacket
-type Rssi struct{
+type Rssi struct {
 	measurementType, rssi, threshold byte
 }
 
 func (r Rssi) Value() (v int8) {
-	binary.Read(bytes.NewReader([]byte{r.rssi}), binary.LittleEndian, &v)
+	_ = binary.Read(bytes.NewReader([]byte{r.rssi}), binary.LittleEndian, &v)
 	return
 }
 
@@ -33,7 +33,7 @@ func (p AntPacket) Class() byte {
 }
 
 func (p AntPacket) Data() []byte {
-	return p[3:len(p)-1]
+	return p[3 : len(p)-1]
 }
 
 func (p AntPacket) CalculateChecksum() (chk byte) {
@@ -63,7 +63,7 @@ func (p AntBroadcastMessage) String() (s string) {
 }
 
 func (p AntBroadcastMessage) Channel() uint8 {
-	return uint8(AntPacket(p).Data()[0])
+	return AntPacket(p).Data()[0]
 }
 
 func (p AntBroadcastMessage) Content() []byte {
@@ -79,7 +79,7 @@ func (p AntBroadcastMessage) ExtendedFlag() byte {
 }
 
 func (p AntBroadcastMessage) DeviceNumber() (num uint16) {
-	binary.Read(bytes.NewReader(p.ExtendedContent()[:2]), binary.LittleEndian, &num)
+	_ = binary.Read(bytes.NewReader(p.ExtendedContent()[:2]), binary.LittleEndian, &num)
 	return
 }
 
@@ -102,12 +102,12 @@ func (p AntBroadcastMessage) RssiInfo() Rssi {
 }
 
 func (p AntBroadcastMessage) RxTimestamp() (ts uint16) {
-	binary.Read(bytes.NewReader(p.ExtendedContent()[8:]), binary.LittleEndian, &ts)
+	_ = binary.Read(bytes.NewReader(p.ExtendedContent()[8:]), binary.LittleEndian, &ts)
 	return
 }
 
 func makeAntPacket(messageType byte, content []byte) AntPacket {
-	p := make([]byte, len(content) + 4)
+	p := make([]byte, len(content)+4)
 
 	p[0] = MESSAGE_TX_SYNC
 	p[1] = byte(len(content))

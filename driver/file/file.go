@@ -1,8 +1,8 @@
-package driver
+package file
 
 import (
-	"os"
 	"io"
+	"os"
 	"time"
 )
 
@@ -42,6 +42,6 @@ func (f *AntCaptureFile) BufferSize() int {
 
 func GetAntCaptureFile(path string) *AntCaptureFile {
 	return &AntCaptureFile{
-		path:path,
+		path: path,
 	}
 }

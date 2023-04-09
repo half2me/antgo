@@ -1,8 +1,8 @@
 package message
 
 import (
-	"encoding/binary"
 	"bytes"
+	"encoding/binary"
 	"fmt"
 )
 
@@ -12,27 +12,27 @@ func (m SpeedAndCadenceMessage) String() string {
 	return fmt.Sprintf("#: %d | %f rpmC, #: %d | %f mC", m.CadenceEventTime(), m.CumulativeCadenceRevolutionCount(), m.SpeedEventTime(), m.CumulativeSpeedRevolutionCount())
 }
 
-// Represents the time of the last valid bike cadence event (1/1024 sec)
+// CadenceEventTime represents the time of the last valid bike cadence event (1/1024 sec)
 func (m SpeedAndCadenceMessage) CadenceEventTime() (num uint16) {
-	binary.Read(bytes.NewReader(AntBroadcastMessage(m).Content()[0:2]), binary.LittleEndian, &num)
+	_ = binary.Read(bytes.NewReader(AntBroadcastMessage(m).Content()[0:2]), binary.LittleEndian, &num)
 	return
 }
 
-// Represents the total number of pedal revolutions
+// CumulativeCadenceRevolutionCount represents the total number of pedal revolutions
 func (m SpeedAndCadenceMessage) CumulativeCadenceRevolutionCount() (num uint16) {
-	binary.Read(bytes.NewReader(AntBroadcastMessage(m).Content()[2:4]), binary.LittleEndian, &num)
+	_ = binary.Read(bytes.NewReader(AntBroadcastMessage(m).Content()[2:4]), binary.LittleEndian, &num)
 	return
 }
 
-// Represents the time of the last valid bike speed event (1/1024 sec)
+// SpeedEventTime represents the time of the last valid bike speed event (1/1024 sec)
 func (m SpeedAndCadenceMessage) SpeedEventTime() (num uint16) {
-	binary.Read(bytes.NewReader(AntBroadcastMessage(m).Content()[4:6]), binary.LittleEndian, &num)
+	_ = binary.Read(bytes.NewReader(AntBroadcastMessage(m).Content()[4:6]), binary.LittleEndian, &num)
 	return
 }
 
-// Represents the total number of wheel revolutions
+// CumulativeSpeedRevolutionCount represents the total number of wheel revolutions
 func (m SpeedAndCadenceMessage) CumulativeSpeedRevolutionCount() (num uint16) {
-	binary.Read(bytes.NewReader(AntBroadcastMessage(m).Content()[6:8]), binary.LittleEndian, &num)
+	_ = binary.Read(bytes.NewReader(AntBroadcastMessage(m).Content()[6:8]), binary.LittleEndian, &num)
 	return
 }
 
