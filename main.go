@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/half2me/antgo/ant"
-	"github.com/half2me/antgo/driver"
 	"github.com/half2me/antgo/driver/usb"
+	"github.com/half2me/antgo/node"
 	"log"
 	"os/signal"
 	"syscall"
@@ -15,30 +15,33 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
+	// workaround for libusb log bug
+	log.SetOutput(usb.FixLibUsbLog(log.Writer()))
+
 	dev, err := usb.AutoDetectDevice()
 	defer dev.Close()
 	if err != nil {
 		log.Fatalf(err.Error())
 	}
 
-	//node := driver.NewNode(sniffer.Sniff(dev))
-	node := driver.NewNode(dev)
+	//n := driver.NewNode(sniffer.Sniff(dev))
+	n := node.NewNode(dev)
 
 	// initialize node
-	err = node.Reset()
+	err = n.Reset()
 	if err != nil {
 		log.Fatalf(err.Error())
 	}
 
 	// Start RX Scan mode
-	err = node.StartRxScanMode()
+	err = n.StartRxScanMode()
 	if err != nil {
 		log.Fatalf(err.Error())
 	}
 
 	// Start reading broadcast messages
 	messages := make(chan ant.AntBroadcastMessage, 10)
-	go node.DumpBroadcastMessages(ctx, messages)
+	go n.DumpBroadcastMessages(ctx, messages)
 
 	for msg := range messages {
 		switch msg.DeviceType() {

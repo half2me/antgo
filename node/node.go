@@ -1,4 +1,4 @@
-package driver
+package node
 
 import (
 	"bufio"
@@ -6,22 +6,16 @@ import (
 	"errors"
 	"fmt"
 	"github.com/half2me/antgo/ant"
+	"github.com/half2me/antgo/driver"
 	"io"
 )
 
-type Driver interface {
-	Close()
-	Read(b []byte) (int, error)
-	Write(b []byte) (int, error)
-	BufferSize() int
-}
-
 type Node struct {
-	driver Driver
+	driver driver.Driver
 	reader *bufio.Reader
 }
 
-func NewNode(driver Driver) Node {
+func NewNode(driver driver.Driver) Node {
 	return Node{
 		driver: driver,
 		reader: bufio.NewReaderSize(driver, driver.BufferSize()),
