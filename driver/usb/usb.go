@@ -1,6 +1,7 @@
 package usb
 
 import (
+	"errors"
 	"github.com/google/gousb"
 )
 
@@ -17,6 +18,9 @@ func GetDevice(vid, pid gousb.ID) (Driver, error) {
 	dev, err := ctx.OpenDeviceWithVIDPID(vid, pid)
 	if err != nil {
 		return Driver{}, err
+	}
+	if dev == nil {
+		return Driver{}, errors.New("device not found")
 	}
 
 	intf, done, err := dev.DefaultInterface()
@@ -56,13 +60,12 @@ func (d Driver) Close() {
 	d.ctx.Close()
 }
 
-func (d Driver) Write(p []byte) (n int, err error) {
-	return d.out.Write(p)
+func (d Driver) Write(buf []byte) (n int, err error) {
+	return d.out.Write(buf)
 }
 
 func (d Driver) Read(buf []byte) (n int, err error) {
-	n, err = d.in.Read(buf)
-	return
+	return d.in.Read(buf)
 }
 
 func (d Driver) BufferSize() int {

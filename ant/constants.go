@@ -1,6 +1,7 @@
-package message
+package ant
 
 const (
+	MESSAGE_RF           = 0x01
 	MESSAGE_TX_SYNC      = 0xA4
 	MESSAGE_SYSTEM_RESET = 0x4A
 	MESSAGE_STARTUP      = 0x6F
@@ -8,6 +9,7 @@ const (
 	ANTPLUS_NETWORK_KEY  = "\xB9\xA5\x21\xFB\xBD\x72\xC3\x45"
 	OPEN_RX_SCAN_MODE    = 0x5B
 
+	MESSAGE_CHANNEL_EVENT     = 0x40
 	MESSAGE_CHANNEL_ACK       = 0x4F
 	MESSAGE_CHANNEL_ASSIGN    = 0x42
 	MESSAGE_CHANNEL_ID        = 0x51

@@ -5,7 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/half2me/antgo/message"
+	"github.com/half2me/antgo/ant"
 	"io"
 )
 
@@ -28,13 +28,13 @@ func NewNode(driver Driver) Node {
 	}
 }
 
-func (node Node) ReadMsg() (p message.AntPacket, err error) {
+func (node Node) ReadMsg() (p ant.AntPacket, err error) {
 	// 1st byte is TX SYNC
 	sync, err := node.reader.ReadByte()
 	if err != nil {
 		return
 	}
-	if sync != message.MESSAGE_TX_SYNC {
+	if sync != ant.MESSAGE_TX_SYNC {
 		return p, fmt.Errorf("expected TX SYNC, got %02X", sync)
 	}
 
@@ -53,7 +53,7 @@ func (node Node) ReadMsg() (p message.AntPacket, err error) {
 		return p, err
 	}
 
-	p = append(message.AntPacket{message.MESSAGE_TX_SYNC, length}, buf...)
+	p = append(ant.AntPacket{ant.MESSAGE_TX_SYNC, length}, buf...)
 
 	// Check message integrity
 	if !p.Valid() {
@@ -63,35 +63,43 @@ func (node Node) ReadMsg() (p message.AntPacket, err error) {
 	return
 }
 
-func (node Node) expectAck() error {
-	msg, err := node.ReadMsg()
+func (node Node) expectMessageClass(t byte) (msg ant.AntPacket, err error) {
+	msg, err = node.ReadMsg()
 	if err != nil {
-		return err
+		return msg, err
 	}
-	if msg.Class() != message.MESSAGE_CHANNEL_ACK {
-		return fmt.Errorf("expected ACK, got %02X", msg.Class())
+	if msg.Class() != t {
+		return msg, fmt.Errorf("expected %02X, got %02X", t, msg.Class())
 	}
-	return nil
+	return msg, nil
 }
 
-func (node Node) WriteMsg(msg message.AntPacket) (err error) {
+func (node Node) WriteMsg(msg ant.AntPacket) (err error) {
 	_, err = node.driver.Write(msg)
 	if err != nil {
 		return err
 	}
-	return node.expectAck()
+	return err
+}
+
+func (node Node) Reset() error {
+	err := node.WriteMsg(ant.SystemResetMessage())
+	if err != nil {
+		return err
+	}
+	_, err = node.expectMessageClass(ant.MESSAGE_STARTUP)
+	return err
 }
 
 func (node Node) StartRxScanMode() error {
-	messages := []message.AntPacket{
-		message.SystemResetMessage(),
-		message.SetNetworkKeyMessage(0, []byte(message.ANTPLUS_NETWORK_KEY)),
-		message.AssignChannelMessage(0, message.CHANNEL_TYPE_ONEWAY_RECEIVE),
-		message.SetChannelIdMessage(0),
-		message.SetChannelRfFrequencyMessage(0, 2457),
-		message.EnableExtendedMessagesMessage(true),
+	messages := []ant.AntPacket{
+		ant.SetNetworkKeyMessage(0, []byte(ant.ANTPLUS_NETWORK_KEY)),
+		ant.AssignChannelMessage(0, ant.CHANNEL_TYPE_ONEWAY_RECEIVE),
+		ant.SetChannelIdMessage(0),
+		ant.SetChannelRfFrequencyMessage(0, 2457),
+		ant.EnableExtendedMessagesMessage(true),
 		// message.LibConfigMessage(true, true, true),
-		message.OpenRxScanModeMessage(),
+		ant.OpenRxScanModeMessage(),
 	}
 
 	for _, msg := range messages {
@@ -99,11 +107,15 @@ func (node Node) StartRxScanMode() error {
 		if err != nil {
 			return err
 		}
+		_, err = node.expectMessageClass(ant.MESSAGE_CHANNEL_EVENT)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-func (node Node) DumpBroadcastMessages(ctx context.Context, messages chan message.AntBroadcastMessage) {
+func (node Node) DumpBroadcastMessages(ctx context.Context, messages chan ant.AntBroadcastMessage) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -118,10 +130,10 @@ func (node Node) DumpBroadcastMessages(ctx context.Context, messages chan messag
 		}
 
 		// skip non-broadcast messages
-		if m.Class() != message.MESSAGE_TYPE_BROADCAST {
+		if m.Class() != ant.MESSAGE_TYPE_BROADCAST {
 			continue
 		}
 
-		messages <- message.AntBroadcastMessage(m)
+		messages <- ant.AntBroadcastMessage(m)
 	}
 }

@@ -1,4 +1,4 @@
-package message
+package ant
 
 import (
 	"bytes"
@@ -9,7 +9,7 @@ import (
 type SpeedAndCadenceMessage AntBroadcastMessage
 
 func (m SpeedAndCadenceMessage) String() string {
-	return fmt.Sprintf("#: %d | %f rpmC, #: %d | %f mC", m.CadenceEventTime(), m.CumulativeCadenceRevolutionCount(), m.SpeedEventTime(), m.CumulativeSpeedRevolutionCount())
+	return fmt.Sprintf("Cadence: #%5d %5drev, Speed: #%5d %5drev", m.CadenceEventTime(), m.CumulativeCadenceRevolutionCount(), m.SpeedEventTime(), m.CumulativeSpeedRevolutionCount())
 }
 
 // CadenceEventTime represents the time of the last valid bike cadence event (1/1024 sec)

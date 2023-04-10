@@ -1,4 +1,4 @@
-package message
+package ant
 
 import (
 	"bytes"
@@ -10,7 +10,7 @@ type PowerMessage AntBroadcastMessage
 
 func (m PowerMessage) String() (s string) {
 	if m.DataPageNumber() == 0x10 {
-		s = fmt.Sprintf("#: %d | %f rpm, %f W", m.EventCount(), m.InstantaneousCadence(), m.InstantaneousPower())
+		s = fmt.Sprintf("Power #%5d %5drpm, %5dW", m.EventCount(), m.InstantaneousCadence(), m.InstantaneousPower())
 	} else {
 		s = ""
 	}

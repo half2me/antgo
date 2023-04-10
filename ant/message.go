@@ -1,4 +1,4 @@
-package message
+package ant
 
 import (
 	"bytes"
@@ -30,6 +30,19 @@ func (p AntPacket) String() (s string) {
 
 func (p AntPacket) Class() byte {
 	return p[2]
+}
+
+func (p AntPacket) ClassName() string {
+	switch p.Class() {
+	case MESSAGE_STARTUP:
+		return "Startup"
+	case MESSAGE_CHANNEL_ACK:
+		return "ACK"
+	case MESSAGE_CHANNEL_EVENT:
+		return "Channel event"
+	default:
+		return fmt.Sprintf("Unknown: %02X", p.Class())
+	}
 }
 
 func (p AntPacket) Data() []byte {
@@ -118,6 +131,10 @@ func makeAntPacket(messageType byte, content []byte) AntPacket {
 	a[len(a)-1] = a.CalculateChecksum()
 
 	return a
+}
+
+func AckMessage() AntPacket {
+	return makeAntPacket(MESSAGE_CHANNEL_ACK, []byte{0x00})
 }
 
 func SystemResetMessage() AntPacket {
