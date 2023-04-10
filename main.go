@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/half2me/antgo/ant"
+	"github.com/half2me/antgo/driver/file"
 	"github.com/half2me/antgo/driver/usb"
 	"github.com/half2me/antgo/node"
 	"log"
@@ -18,7 +19,8 @@ func main() {
 	// workaround for libusb log bug
 	log.SetOutput(usb.FixLibUsbLog(log.Writer()))
 
-	dev, err := usb.AutoDetectDevice()
+	//dev, err := usb.AutoDetectDevice()
+	dev, err := file.NewEmulator("examples/123.cap")
 	defer dev.Close()
 	if err != nil {
 		log.Fatalf(err.Error())
