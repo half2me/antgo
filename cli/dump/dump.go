@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/half2me/antgo/ant"
 	"github.com/half2me/antgo/device"
-	"github.com/half2me/antgo/driver/file"
+	"github.com/half2me/antgo/driver/emulator"
 	"github.com/half2me/antgo/driver/usb"
 	"log"
 	"net"
@@ -13,18 +13,24 @@ import (
 	"time"
 )
 
+const (
+	HOST = "localhost"
+	PORT = "9999"
+	TYPE = "tcp"
+)
+
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	// UDP Client
-	udp, err := net.ResolveUDPAddr("udp", ":9999")
+	// TCP Client
+	tcpServer, err := net.ResolveTCPAddr(TYPE, HOST+":"+PORT)
 
 	if err != nil {
 		log.Fatal(err.Error())
 	}
 
-	conn, err := net.DialUDP("udp", nil, udp)
+	conn, err := net.DialTCP(TYPE, nil, tcpServer)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
@@ -36,7 +42,7 @@ func main() {
 	log.SetOutput(usb.FixLibUsbLog(log.Writer()))
 
 	//dev, err := usb.AutoDetectDevice()
-	dev, err := file.NewEmulator("examples/123.cap")
+	dev, err := emulator.NewEmulator("examples/123.cap")
 	defer dev.Close()
 	if err != nil {
 		log.Fatalf(err.Error())

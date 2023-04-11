@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/half2me/antgo/ant"
 	"io"
-	"log"
 )
 
 func expectMessageClass(driver io.ReadWriter, t byte) (msg ant.Packet, err error) {
@@ -57,7 +56,6 @@ func DumpBroadcastMessages(ctx context.Context, driver io.ReadWriter, messages c
 	for {
 		select {
 		case <-ctx.Done():
-			log.Println("Loop done")
 			return
 		default:
 		}

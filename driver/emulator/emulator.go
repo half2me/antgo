@@ -1,4 +1,4 @@
-package file
+package emulator
 
 import (
 	"github.com/half2me/antgo/ant"
