@@ -3,13 +3,53 @@ package ant
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
+	"io"
 )
 
-type AntPacket []byte
-type AntBroadcastMessage AntPacket
+type Packet []byte
+type BroadcastMessage Packet
 type Rssi struct {
 	measurementType, rssi, threshold byte
+}
+
+// ReadMsg reads a single ANT message
+func ReadMsg(reader io.Reader) (p Packet, err error) {
+	// 1st byte is TX SYNC
+	buf := make([]byte, 1)
+	_, err = io.ReadFull(reader, buf)
+	if err != nil {
+		return
+	}
+	if buf[0] != MESSAGE_TX_SYNC {
+		return p, fmt.Errorf("expected TX SYNC, got %02X", buf[0])
+	}
+
+	// 2nd byte is payload length
+	_, err = io.ReadFull(reader, buf)
+	if err != nil {
+		return
+	}
+	length := buf[0]
+
+	// length +1 byte type + 1 byte checksum
+	buf = make([]byte, length+2)
+
+	// Get message content and checksum
+	_, err = io.ReadFull(reader, buf)
+	if err != nil {
+		return p, err
+	}
+
+	p = append(Packet{MESSAGE_TX_SYNC, length}, buf...)
+
+	// Check message integrity
+	if !p.Valid() {
+		err = errors.New("invalid checksum")
+	}
+
+	return
 }
 
 func (r Rssi) Value() (v int8) {
@@ -17,7 +57,7 @@ func (r Rssi) Value() (v int8) {
 	return
 }
 
-func (p AntPacket) String() (s string) {
+func (p Packet) String() (s string) {
 	s = fmt.Sprintf("[%02X] [", p.Class())
 
 	for _, v := range p.Data() {
@@ -28,11 +68,11 @@ func (p AntPacket) String() (s string) {
 	return
 }
 
-func (p AntPacket) Class() byte {
+func (p Packet) Class() byte {
 	return p[2]
 }
 
-func (p AntPacket) ClassName() string {
+func (p Packet) ClassName() string {
 	switch p.Class() {
 	case MESSAGE_STARTUP:
 		return "Startup"
@@ -45,22 +85,22 @@ func (p AntPacket) ClassName() string {
 	}
 }
 
-func (p AntPacket) Data() []byte {
+func (p Packet) Data() []byte {
 	return p[3 : len(p)-1]
 }
 
-func (p AntPacket) CalculateChecksum() (chk byte) {
+func (p Packet) CalculateChecksum() (chk byte) {
 	for _, v := range p[:len(p)-1] {
 		chk ^= v
 	}
 	return
 }
 
-func (p AntPacket) Valid() bool {
+func (p Packet) Valid() bool {
 	return p.CalculateChecksum() == p[len(p)-1]
 }
 
-func (p AntBroadcastMessage) String() (s string) {
+func (p BroadcastMessage) String() (s string) {
 	s = fmt.Sprintf("CH: %d ", p.Channel())
 	s += fmt.Sprintf("[%d] ", p.DeviceNumber())
 	s += fmt.Sprintf("[%s] ", DeviceTypes[p.DeviceType()])
@@ -75,36 +115,36 @@ func (p AntBroadcastMessage) String() (s string) {
 	return
 }
 
-func (p AntBroadcastMessage) Channel() uint8 {
-	return AntPacket(p).Data()[0]
+func (p BroadcastMessage) Channel() uint8 {
+	return Packet(p).Data()[0]
 }
 
-func (p AntBroadcastMessage) Content() []byte {
-	return AntPacket(p).Data()[1:9]
+func (p BroadcastMessage) Content() []byte {
+	return Packet(p).Data()[1:9]
 }
 
-func (p AntBroadcastMessage) ExtendedContent() []byte {
-	return AntPacket(p).Data()[10:]
+func (p BroadcastMessage) ExtendedContent() []byte {
+	return Packet(p).Data()[10:]
 }
 
-func (p AntBroadcastMessage) ExtendedFlag() byte {
-	return AntPacket(p).Data()[9]
+func (p BroadcastMessage) ExtendedFlag() byte {
+	return Packet(p).Data()[9]
 }
 
-func (p AntBroadcastMessage) DeviceNumber() (num uint16) {
+func (p BroadcastMessage) DeviceNumber() (num uint16) {
 	_ = binary.Read(bytes.NewReader(p.ExtendedContent()[:2]), binary.LittleEndian, &num)
 	return
 }
 
-func (p AntBroadcastMessage) DeviceType() byte {
+func (p BroadcastMessage) DeviceType() byte {
 	return p.ExtendedContent()[2]
 }
 
-func (p AntBroadcastMessage) TransmissionType() byte {
+func (p BroadcastMessage) TransmissionType() byte {
 	return p.ExtendedContent()[3]
 }
 
-func (p AntBroadcastMessage) RssiInfo() Rssi {
+func (p BroadcastMessage) RssiInfo() Rssi {
 	ex := p.ExtendedContent()
 
 	return Rssi{
@@ -114,12 +154,12 @@ func (p AntBroadcastMessage) RssiInfo() Rssi {
 	}
 }
 
-func (p AntBroadcastMessage) RxTimestamp() (ts uint16) {
+func (p BroadcastMessage) RxTimestamp() (ts uint16) {
 	_ = binary.Read(bytes.NewReader(p.ExtendedContent()[8:]), binary.LittleEndian, &ts)
 	return
 }
 
-func MakeAntPacket(messageType byte, content []byte) AntPacket {
+func MakeAntPacket(messageType byte, content []byte) Packet {
 	p := make([]byte, len(content)+4)
 
 	p[0] = MESSAGE_TX_SYNC
@@ -127,49 +167,49 @@ func MakeAntPacket(messageType byte, content []byte) AntPacket {
 	p[2] = messageType
 	copy(p[3:], content)
 
-	a := AntPacket(p)
+	a := Packet(p)
 	a[len(a)-1] = a.CalculateChecksum()
 
 	return a
 }
 
-func AckMessage() AntPacket {
+func AckMessage() Packet {
 	return MakeAntPacket(MESSAGE_CHANNEL_ACK, []byte{0x00})
 }
 
-func SystemResetMessage() AntPacket {
+func SystemResetMessage() Packet {
 	return MakeAntPacket(MESSAGE_SYSTEM_RESET, []byte{0x00})
 }
 
-func SetNetworkKeyMessage(channel uint8, key []byte) AntPacket {
+func SetNetworkKeyMessage(channel uint8, key []byte) Packet {
 	return MakeAntPacket(MESSAGE_NETWORK_KEY, append([]byte{byte(channel)}, key...))
 }
 
-func OpenChannelMessage(channel uint8) AntPacket {
+func OpenChannelMessage(channel uint8) Packet {
 	return MakeAntPacket(MESSAGE_CHANNEL_OPEN, []byte{byte(channel)})
 }
 
-func CloseChannelMessage(channel uint8) AntPacket {
+func CloseChannelMessage(channel uint8) Packet {
 	return MakeAntPacket(MESSAGE_CHANNEL_CLOSE, []byte{byte(channel)})
 }
 
-func AssignChannelMessage(channel uint8, typ byte) AntPacket {
+func AssignChannelMessage(channel uint8, typ byte) Packet {
 	return MakeAntPacket(MESSAGE_CHANNEL_ASSIGN, []byte{byte(channel), typ, 0x00})
 }
 
-func SetChannelIdMessage(channel uint8) AntPacket {
+func SetChannelIdMessage(channel uint8) Packet {
 	return MakeAntPacket(MESSAGE_CHANNEL_ID, []byte{byte(channel), 0x00, 0x00, 0x00, 0x00})
 }
 
-func SetChannelRfFrequencyMessage(channel uint8, freq uint16) AntPacket {
+func SetChannelRfFrequencyMessage(channel uint8, freq uint16) Packet {
 	return MakeAntPacket(MESSAGE_CHANNEL_FREQUENCY, []byte{byte(channel), byte(freq - 2400)})
 }
 
-func OpenRxScanModeMessage() AntPacket {
+func OpenRxScanModeMessage() Packet {
 	return MakeAntPacket(OPEN_RX_SCAN_MODE, []byte{0x00})
 }
 
-func EnableExtendedMessagesMessage(enable bool) AntPacket {
+func EnableExtendedMessagesMessage(enable bool) Packet {
 	var opt byte = 0x00
 	if enable {
 		opt = 0x01
@@ -177,7 +217,7 @@ func EnableExtendedMessagesMessage(enable bool) AntPacket {
 	return MakeAntPacket(MESSAGE_ENABLE_EXT_RX_MESSAGES, []byte{opt})
 }
 
-func LibConfigMessage(rxTimestamp, rssi, channelId bool) AntPacket {
+func LibConfigMessage(rxTimestamp, rssi, channelId bool) Packet {
 	var opt byte
 
 	if rxTimestamp {

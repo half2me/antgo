@@ -2,19 +2,35 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"github.com/half2me/antgo/ant"
+	"github.com/half2me/antgo/device"
 	"github.com/half2me/antgo/driver/file"
 	"github.com/half2me/antgo/driver/usb"
-	"github.com/half2me/antgo/node"
 	"log"
+	"net"
 	"os/signal"
 	"syscall"
+	"time"
 )
 
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+
+	// UDP Client
+	udp, err := net.ResolveUDPAddr("udp", ":9999")
+
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
+	conn, err := net.DialUDP("udp", nil, udp)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
+	//close the connection
+	defer conn.Close()
 
 	// workaround for libusb log bug
 	log.SetOutput(usb.FixLibUsbLog(log.Writer()))
@@ -26,33 +42,29 @@ func main() {
 		log.Fatalf(err.Error())
 	}
 
-	//n := driver.NewNode(sniffer.Sniff(dev))
-	n := node.NewNode(dev)
-
-	// initialize node
-	err = n.Reset()
+	// initialize device
+	err = device.Reset(dev)
 	if err != nil {
 		log.Fatalf(err.Error())
 	}
 
 	// Start RX Scan mode
-	err = n.StartRxScanMode()
+	err = device.StartRxScanMode(dev)
 	if err != nil {
 		log.Fatalf(err.Error())
 	}
 
 	// Start reading broadcast messages
-	messages := make(chan ant.AntBroadcastMessage, 10)
-	go n.DumpBroadcastMessages(ctx, messages)
+	messages := make(chan ant.BroadcastMessage)
+	go device.DumpBroadcastMessages(ctx, dev, messages)
 
 	for msg := range messages {
-		switch msg.DeviceType() {
-		case ant.DEVICE_TYPE_SPEED_AND_CADENCE:
-			fmt.Println(ant.SpeedAndCadenceMessage(msg))
-		case ant.DEVICE_TYPE_POWER:
-			fmt.Println(ant.PowerMessage(msg))
-		default:
-			fmt.Println(msg)
+		<-time.After(500 * time.Millisecond)
+		log.Println(msg)
+		// dump to UDP
+		_, err = conn.Write(msg)
+		if err != nil {
+			log.Printf("Write failed: %s\n", err.Error())
 		}
 	}
 }

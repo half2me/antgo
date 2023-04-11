@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-type PowerMessage AntBroadcastMessage
+type PowerMessage BroadcastMessage
 
 func (m PowerMessage) String() (s string) {
 	if m.DataPageNumber() == 0x10 {
@@ -21,13 +21,13 @@ func (m PowerMessage) String() (s string) {
 // DataPageNumber specifies the type of message sent by the power sensor
 // Currently we only decode the standard Power-Only main data page (0x10)
 func (m PowerMessage) DataPageNumber() uint8 {
-	return AntBroadcastMessage(m).Content()[0]
+	return BroadcastMessage(m).Content()[0]
 }
 
 // EventCount incremented each time the information in the message is updated.
 // There are no invalid values for update event count.
 func (m PowerMessage) EventCount() uint8 {
-	return AntBroadcastMessage(m).Content()[1]
+	return BroadcastMessage(m).Content()[1]
 }
 
 // Using the previous message we can see the difference of the event counts. Since sensors increment
@@ -40,13 +40,13 @@ func (m PowerMessage) eventCountDiff(prev PowerMessage) uint8 {
 // InstantaneousCadence (RPM) pedaling cadence recorded from the power sensor.
 // This field is an instantaneous value only; it does not accumulate between messages.
 func (m PowerMessage) InstantaneousCadence() uint8 {
-	return AntBroadcastMessage(m).Content()[3]
+	return BroadcastMessage(m).Content()[3]
 }
 
 // AccumulatedPower (W) running sum of the instantaneous power data, incremented at each update
 // of the update event count.
 func (m PowerMessage) AccumulatedPower() (num uint16) {
-	_ = binary.Read(bytes.NewReader(AntBroadcastMessage(m).Content()[4:6]), binary.LittleEndian, &num)
+	_ = binary.Read(bytes.NewReader(BroadcastMessage(m).Content()[4:6]), binary.LittleEndian, &num)
 	return
 }
 
@@ -58,7 +58,7 @@ func (m PowerMessage) accumulatedPowerDiff(prev PowerMessage) uint16 {
 
 // InstantaneousPower (W) Instantaneous power
 func (m PowerMessage) InstantaneousPower() (num uint16) {
-	_ = binary.Read(bytes.NewReader(AntBroadcastMessage(m).Content()[6:8]), binary.LittleEndian, &num)
+	_ = binary.Read(bytes.NewReader(BroadcastMessage(m).Content()[6:8]), binary.LittleEndian, &num)
 	return
 }
 

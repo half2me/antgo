@@ -29,7 +29,7 @@ func (e Emulator) Read(b []byte) (int, error) {
 }
 
 func (e Emulator) Write(b []byte) (int, error) {
-	msg := ant.AntPacket(b)
+	msg := ant.Packet(b)
 	go func() {
 		switch c := msg.Class(); {
 		case c == ant.MESSAGE_SYSTEM_RESET:
@@ -53,8 +53,4 @@ func (e Emulator) Write(b []byte) (int, error) {
 	}()
 
 	return len(b), nil
-}
-
-func (e Emulator) BufferSize() int {
-	return 4096
 }

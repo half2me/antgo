@@ -1,6 +1,7 @@
 package usb
 
 import (
+	"bufio"
 	"errors"
 	"github.com/google/gousb"
 )
@@ -8,7 +9,7 @@ import (
 type Driver struct {
 	ctx  *gousb.Context
 	dev  *gousb.Device
-	in   *gousb.InEndpoint
+	in   *bufio.Reader
 	out  *gousb.OutEndpoint
 	done *func()
 }
@@ -38,10 +39,12 @@ func GetDevice(vid, pid gousb.ID) (Driver, error) {
 		return Driver{}, err
 	}
 
-	d.in, err = intf.InEndpoint(1)
+	in, err := intf.InEndpoint(1)
 	if err != nil {
 		return Driver{}, err
 	}
+
+	d.in = bufio.NewReader(in)
 
 	return d, nil
 }
@@ -60,14 +63,10 @@ func (d Driver) Close() {
 	d.ctx.Close()
 }
 
-func (d Driver) Write(buf []byte) (n int, err error) {
-	return d.out.Write(buf)
-}
-
 func (d Driver) Read(buf []byte) (n int, err error) {
 	return d.in.Read(buf)
 }
 
-func (d Driver) BufferSize() int {
-	return 4096
+func (d Driver) Write(buf []byte) (n int, err error) {
+	return d.out.Write(buf)
 }
