@@ -27,12 +27,14 @@ func main() {
 	tcpServer, err := net.ResolveTCPAddr(TYPE, HOST+":"+PORT)
 
 	if err != nil {
-		log.Fatal(err.Error())
+		log.Println(err.Error())
+		return
 	}
 
 	conn, err := net.DialTCP(TYPE, nil, tcpServer)
 	if err != nil {
-		log.Fatal(err.Error())
+		log.Println(err.Error())
+		return
 	}
 
 	//close the connection
@@ -45,19 +47,22 @@ func main() {
 	dev, err := emulator.NewEmulator("examples/123.cap")
 	defer dev.Close()
 	if err != nil {
-		log.Fatalf(err.Error())
+		log.Println(err.Error())
+		return
 	}
 
 	// initialize device
 	err = device.Reset(dev)
 	if err != nil {
-		log.Fatalf(err.Error())
+		log.Println(err.Error())
+		return
 	}
 
 	// Start RX Scan mode
 	err = device.StartRxScanMode(dev)
 	if err != nil {
-		log.Fatalf(err.Error())
+		log.Println(err.Error())
+		return
 	}
 
 	// Start reading broadcast messages
@@ -65,10 +70,24 @@ func main() {
 	go device.DumpBroadcastMessages(ctx, dev, messages)
 
 	for msg := range messages {
-		<-time.After(500 * time.Millisecond)
+		<-time.After(500 * time.Millisecond) // Artificial delay for
+		log.Println(msg)
+
+		// we only need s&c or power messages
+		if !(msg.DeviceType() == ant.DEVICE_TYPE_SPEED_AND_CADENCE ||
+			msg.DeviceType() == ant.DEVICE_TYPE_POWER) {
+			continue
+		}
+
+		// ignore power sensor service packets
+		if msg.DeviceType() == ant.DEVICE_TYPE_POWER && ant.PowerMessage(msg).DataPageNumber() != 0x10 {
+			continue
+		}
+
 		_, err = conn.Write(msg)
 		if err != nil {
 			log.Printf("Write failed: %s\n", err.Error())
+			stop()
 		}
 	}
 }

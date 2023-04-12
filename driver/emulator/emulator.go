@@ -3,6 +3,7 @@ package emulator
 import (
 	"github.com/half2me/antgo/ant"
 	"io"
+	"log"
 	"os"
 )
 
@@ -45,6 +46,7 @@ func (e Emulator) Write(b []byte) (int, error) {
 			_, _ = e.pw.Write(ant.MakeAntPacket(ant.MESSAGE_CHANNEL_EVENT, []byte{0x00}))
 
 			go func() {
+				log.Println("Reading data from capture file")
 				_, _ = io.Copy(e.pw, e.file)
 			}()
 		default:

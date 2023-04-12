@@ -139,7 +139,14 @@ func (p BroadcastMessage) DeviceType() byte {
 }
 
 func (p BroadcastMessage) DeviceTypeString() string {
-	return DeviceTypes[p.DeviceType()]
+	switch p.DeviceType() {
+	case DEVICE_TYPE_SPEED_AND_CADENCE:
+		return "speedAndCadence"
+	case DEVICE_TYPE_POWER:
+		return "power"
+	default:
+		return ""
+	}
 }
 
 func (p BroadcastMessage) TransmissionType() byte {

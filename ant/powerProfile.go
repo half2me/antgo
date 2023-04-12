@@ -12,7 +12,7 @@ func (m PowerMessage) String() (s string) {
 	if m.DataPageNumber() == 0x10 {
 		s = fmt.Sprintf("Power #%5d %5drpm, %5dW", m.EventCount(), m.InstantaneousCadence(), m.InstantaneousPower())
 	} else {
-		s = ""
+		s = "Power (service packet)"
 	}
 
 	return
