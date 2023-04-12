@@ -39,6 +39,6 @@ const (
 )
 
 var DeviceTypes = map[byte]string{
-	DEVICE_TYPE_SPEED_AND_CADENCE: "S&C",
-	DEVICE_TYPE_POWER:             "Power",
+	DEVICE_TYPE_SPEED_AND_CADENCE: "speedAndCadence",
+	DEVICE_TYPE_POWER:             "power",
 }

@@ -101,9 +101,7 @@ func (p Packet) Valid() bool {
 }
 
 func (p BroadcastMessage) String() (s string) {
-	s = fmt.Sprintf("CH: %d ", p.Channel())
-	s += fmt.Sprintf("[%d] ", p.DeviceNumber())
-	s += fmt.Sprintf("[%s] ", DeviceTypes[p.DeviceType()])
+	s = fmt.Sprintf("CH: %d [%d] [%s]", p.Channel(), p.DeviceNumber(), p.DeviceTypeString())
 
 	s += "["
 
@@ -138,6 +136,10 @@ func (p BroadcastMessage) DeviceNumber() (num uint16) {
 
 func (p BroadcastMessage) DeviceType() byte {
 	return p.ExtendedContent()[2]
+}
+
+func (p BroadcastMessage) DeviceTypeString() string {
+	return DeviceTypes[p.DeviceType()]
 }
 
 func (p BroadcastMessage) TransmissionType() byte {

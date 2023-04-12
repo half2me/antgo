@@ -66,8 +66,6 @@ func main() {
 
 	for msg := range messages {
 		<-time.After(500 * time.Millisecond)
-		log.Println(msg)
-		// dump to UDP
 		_, err = conn.Write(msg)
 		if err != nil {
 			log.Printf("Write failed: %s\n", err.Error())
