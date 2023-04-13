@@ -18,7 +18,7 @@ func expectMessageClass(driver io.ReadWriter, t byte) (msg ant.Packet, err error
 	return msg, nil
 }
 
-func Reset(driver io.ReadWriter) error {
+func ResetWait(driver io.ReadWriter) error {
 	_, err := driver.Write(ant.SystemResetMessage())
 	if err != nil {
 		return err
@@ -27,7 +27,12 @@ func Reset(driver io.ReadWriter) error {
 	return err
 }
 
-func StartRxScanMode(driver io.ReadWriter) error {
+func Reset(driver io.ReadWriter) error {
+	_, err := driver.Write(ant.SystemResetMessage())
+	return err
+}
+
+func StartRxScanModeWait(driver io.ReadWriter) error {
 	messages := []ant.Packet{
 		ant.SetNetworkKeyMessage(0, []byte(ant.ANTPLUS_NETWORK_KEY)),
 		ant.AssignChannelMessage(0, ant.CHANNEL_TYPE_ONEWAY_RECEIVE),
@@ -44,6 +49,26 @@ func StartRxScanMode(driver io.ReadWriter) error {
 			return err
 		}
 		_, err = expectMessageClass(driver, ant.MESSAGE_CHANNEL_EVENT)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func StartRxScanMode(driver io.ReadWriter) error {
+	messages := []ant.Packet{
+		ant.SetNetworkKeyMessage(0, []byte(ant.ANTPLUS_NETWORK_KEY)),
+		ant.AssignChannelMessage(0, ant.CHANNEL_TYPE_ONEWAY_RECEIVE),
+		ant.SetChannelIdMessage(0),
+		ant.SetChannelRfFrequencyMessage(0, 2457),
+		ant.EnableExtendedMessagesMessage(true),
+		// message.LibConfigMessage(true, true, true),
+		ant.OpenRxScanModeMessage(),
+	}
+
+	for _, msg := range messages {
+		_, err := driver.Write(msg)
 		if err != nil {
 			return err
 		}
