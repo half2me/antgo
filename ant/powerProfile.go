@@ -66,13 +66,11 @@ func (m PowerMessage) InstantaneousPower() (num uint16) {
 // In conditions where packets are lost, average power accurately calculates power over the interval
 // between the received messages.
 func (m PowerMessage) AveragePower(prev PowerMessage) float32 {
-	if prev == nil {
+	eventCountDiff := m.eventCountDiff(prev)
+
+	if eventCountDiff == 0 {
 		return float32(m.InstantaneousPower())
 	}
 
-	if prev.EventCount() == m.EventCount() {
-		return float32(m.InstantaneousPower())
-	}
-
-	return float32(m.accumulatedPowerDiff(prev)) / float32(m.eventCountDiff(prev))
+	return float32(m.accumulatedPowerDiff(prev)) / float32(eventCountDiff)
 }

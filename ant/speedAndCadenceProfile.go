@@ -36,17 +36,11 @@ func (m SpeedAndCadenceMessage) CumulativeSpeedRevolutionCount() (num uint16) {
 	return
 }
 
-func (m SpeedAndCadenceMessage) SpeedEventTimeDiff(prev SpeedAndCadenceMessage) uint16 {
-	if prev == nil {
-		return 0
-	}
+func (m SpeedAndCadenceMessage) speedEventTimeDiff(prev SpeedAndCadenceMessage) uint16 {
 	return m.SpeedEventTime() - prev.SpeedEventTime()
 }
 
-func (m SpeedAndCadenceMessage) CadenceEventTimeDiff(prev SpeedAndCadenceMessage) uint16 {
-	if prev == nil {
-		return 0
-	}
+func (m SpeedAndCadenceMessage) cadenceEventTimeDiff(prev SpeedAndCadenceMessage) uint16 {
 	return m.CadenceEventTime() - prev.CadenceEventTime()
 }
 
@@ -54,49 +48,40 @@ func (m SpeedAndCadenceMessage) speedRevolutionCountDiff(prev SpeedAndCadenceMes
 	return m.CumulativeSpeedRevolutionCount() - prev.CumulativeSpeedRevolutionCount()
 }
 
-func (m SpeedAndCadenceMessage) CadenceRevolutionCountDiff(prev SpeedAndCadenceMessage) uint16 {
+func (m SpeedAndCadenceMessage) cadenceRevolutionCountDiff(prev SpeedAndCadenceMessage) uint16 {
 	return m.CumulativeCadenceRevolutionCount() - prev.CumulativeCadenceRevolutionCount()
 }
 
-// Returns the cadence calculated from the previous message (0 if previous message is nil)
-// The second parameter "nochange" indicates that the EventTime counter has not changed since the
-// previous message, which means a complete rotation has not yet occurred. You should use this value
-// to handle cases where the pedal stops: "coasting" (EventTime counter does not change)
+// Cadence Returns the cadence calculated from the previous message
+// If the "ok" parameter is false, this indicates that a complete rotation has not yet occurred.
+// In this case the cadence has not changed, but it is impossible to calculate from these two messages.
+// We can use this to also handle cases where the pedal stops: "coasting" (EventTime counter does not change)
 // Cadence: (RPM)
-func (m SpeedAndCadenceMessage) Cadence(prev SpeedAndCadenceMessage) (cadence float32, nochange bool) {
-	if prev == nil {
+func (m SpeedAndCadenceMessage) Cadence(prev SpeedAndCadenceMessage) (cadence float32, ok bool) {
+	eventCountDiff := m.cadenceEventTimeDiff(prev)
+	if eventCountDiff == 0 {
 		return 0, false
 	}
 
-	if m.CadenceEventTimeDiff(prev) == 0 {
-		return 0, true
-	}
-
-	return float32(m.CadenceRevolutionCountDiff(prev)) * 1024 * 60 / float32(m.CadenceEventTimeDiff(prev)), false
+	return float32(m.cadenceRevolutionCountDiff(prev)) * 1024 * 60 / float32(eventCountDiff), true
 }
 
 // Distance travelled since the last message: (m)
 // circumference: Circumference of the wheel (m)
 func (m SpeedAndCadenceMessage) Distance(prev SpeedAndCadenceMessage, circumference float32) float32 {
-	if prev == nil {
-		return 0
-	}
 	return float32(m.speedRevolutionCountDiff(prev)) * circumference
 }
 
-// Speed: (m/s)
+// Speed in (m/s)
 // circumference: Circumference of the wheel (m)
-// The second parameter "nochange" indicates that the EventTime counter has not changed since the
-// previous message, which means a complete rotation has not yet occurred. You should use this value
-// to handle cases where the pedal stops: "coasting" (EventTime counter does not change)
-func (m SpeedAndCadenceMessage) Speed(prev SpeedAndCadenceMessage, circumference float32) (speed float32, nochange bool) {
-	if prev == nil {
+// If the "ok" parameter is false, this indicates that a complete rotation has not yet occurred.
+// In this case the speed has not changed, but it is impossible to calculate from these two messages.
+// We can use this to also handle cases where the pedal stops: "coasting" (EventTime counter does not change)
+func (m SpeedAndCadenceMessage) Speed(prev SpeedAndCadenceMessage, circumference float32) (speed float32, ok bool) {
+	eventCountDiff := m.speedEventTimeDiff(prev)
+	if eventCountDiff == 0 {
 		return 0, false
 	}
 
-	if m.SpeedEventTimeDiff(prev) == 0 {
-		return 0, true
-	}
-
-	return m.Distance(prev, circumference) * 1024 / float32(m.SpeedEventTimeDiff(prev)), false
+	return m.Distance(prev, circumference) * 1024 / float32(eventCountDiff), true
 }
