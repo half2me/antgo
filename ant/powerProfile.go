@@ -65,12 +65,12 @@ func (m PowerMessage) InstantaneousPower() (num uint16) {
 // AveragePower (W) Under normal conditions with complete RF reception, average power equals instantaneous power.
 // In conditions where packets are lost, average power accurately calculates power over the interval
 // between the received messages.
-func (m PowerMessage) AveragePower(prev PowerMessage) float32 {
+func (m PowerMessage) AveragePower(prev PowerMessage) float64 {
 	eventCountDiff := m.eventCountDiff(prev)
 
 	if eventCountDiff == 0 {
-		return float32(m.InstantaneousPower())
+		return float64(m.InstantaneousPower())
 	}
 
-	return float32(m.accumulatedPowerDiff(prev)) / float32(eventCountDiff)
+	return float64(m.accumulatedPowerDiff(prev)) / float64(eventCountDiff)
 }

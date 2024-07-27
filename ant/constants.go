@@ -36,4 +36,6 @@ const (
 
 	DEVICE_TYPE_SPEED_AND_CADENCE = 0x79
 	DEVICE_TYPE_POWER             = 0x0B
+	DEVICE_TYPE_FE                = 0x11
+	DEVICE_TYPE_SDM               = 0x7C
 )
