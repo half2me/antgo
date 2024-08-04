@@ -48,8 +48,8 @@ func (m FeMessage) EquipmentTypeString() string {
 
 // ElapsedTime (1/4sec) Accumulated value of the elapsed time since start of workout
 // rollover every 64s
-func (m FeMessage) ElapsedTime() float64 {
-	return float64(uint8(BroadcastMessage(m).Content()[2]) / 4.0)
+func (m FeMessage) ElapsedTime() uint8 {
+	return BroadcastMessage(m).Content()[2]
 }
 
 // AccumulatedDistance (m) Accumulated value of the distance traveled since start of workout
@@ -68,6 +68,10 @@ func (m FeMessage) InstantaneousSpeed() (num uint16) {
 	return
 }
 
+func (m FeMessage) ellapsedTimeDiff(prev FeMessage) uint8 {
+	return m.ElapsedTime() - prev.ElapsedTime()
+}
+
 // Distance travelled since the last message: (m)
 func (m FeMessage) Distance(prev FeMessage) uint8 {
 	return m.AccumulatedDistance() - prev.AccumulatedDistance()
@@ -78,10 +82,10 @@ func (m FeMessage) Distance(prev FeMessage) uint8 {
 // In this case the speed has not changed, but it is impossible to calculate from these two messages.
 // We can use this to also handle cases where the pedal stops: "coasting" (EventTime counter does not change)
 func (m FeMessage) Speed(prev FeMessage) (speed float64, ok bool) {
-	elapsedTimeDiff := m.ElapsedTime() - prev.ElapsedTime()
+	elapsedTimeDiff := m.ellapsedTimeDiff(prev)
 	if elapsedTimeDiff == 0 {
 		return 0, false
 	}
 
-	return float64(m.Distance(prev)) / elapsedTimeDiff, true
+	return float64(m.Distance(prev)) / (float64(elapsedTimeDiff) / 4), true
 }
