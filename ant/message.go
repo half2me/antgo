@@ -14,6 +14,8 @@ type Rssi struct {
 	measurementType, rssi, threshold byte
 }
 
+var InvalidChecksumError = errors.New("invalid checksum")
+
 // ReadMsg reads a single ANT message
 func ReadMsg(reader io.Reader) (p Packet, err error) {
 	// 1st byte is TX SYNC
@@ -46,7 +48,7 @@ func ReadMsg(reader io.Reader) (p Packet, err error) {
 
 	// Check message integrity
 	if !p.Valid() {
-		err = errors.New("invalid checksum")
+		err = InvalidChecksumError
 	}
 
 	return
