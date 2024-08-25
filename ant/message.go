@@ -131,9 +131,11 @@ func (p BroadcastMessage) ExtendedFlag() byte {
 	return Packet(p).Data()[9]
 }
 
-func (p BroadcastMessage) DeviceNumber() (num uint16) {
-	_ = binary.Read(bytes.NewReader(p.ExtendedContent()[:2]), binary.LittleEndian, &num)
-	return
+func (p BroadcastMessage) DeviceNumber() (num uint32) {
+	return binary.LittleEndian.Uint32([]byte{
+		p.ExtendedContent()[0], p.ExtendedContent()[1], // Device Number uint16
+		p.ExtendedContent()[3] >> 4, 0x00, // Extended Device Number -> uint20
+	})
 }
 
 func (p BroadcastMessage) DeviceType() byte {
