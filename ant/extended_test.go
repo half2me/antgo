@@ -55,6 +55,20 @@ func TestRxTimestampFollowsTheBlocksInFrontOfIt(t *testing.T) {
 			want: 0x2211,
 		},
 		{
+			// No channel id in front, so a parser that still assumes one is
+			// four bytes out. Every other rssi case here carries one.
+			name: "dBm rssi and timestamp, no channel id",
+			flag: EXT_FLAG_RSSI | EXT_FLAG_TIMESTAMP,
+			ext:  []byte{RSSI_MEASUREMENT_TYPE_DBM, 0xBA, 0x14, 0x11, 0x22},
+			want: 0x2211,
+		},
+		{
+			name: "agc rssi and timestamp, no channel id",
+			flag: EXT_FLAG_RSSI | EXT_FLAG_TIMESTAMP,
+			ext:  []byte{RSSI_MEASUREMENT_TYPE_AGC, 0xBA, 0x14, 0x03, 0x11, 0x22},
+			want: 0x2211,
+		},
+		{
 			name: "timestamp alone",
 			flag: EXT_FLAG_TIMESTAMP,
 			ext:  []byte{0x11, 0x22},
@@ -100,6 +114,14 @@ func TestRxTimestampIsAbsentRatherThanZero(t *testing.T) {
 			ext:  append(channelId(), RSSI_MEASUREMENT_TYPE_DBM, 0xBA),
 		},
 		{
+			// An rssi block of unknown width leaves everything behind it at an
+			// unknown offset, so the two bytes there are not a timestamp.
+			// Guessing a width would report them as one.
+			name: "announced behind an rssi block of an unknown measurement type",
+			flag: EXT_FLAG_CHANNEL_ID | EXT_FLAG_RSSI | EXT_FLAG_TIMESTAMP,
+			ext:  append(channelId(), 0x40, 0xBA, 0x14, 0x11, 0x22),
+		},
+		{
 			name: "a flag byte announcing nothing",
 			flag: 0x00,
 		},
@@ -135,6 +157,24 @@ func TestRssiInfo(t *testing.T) {
 	}
 	if got := rssi.Value(); got != -70 {
 		t.Errorf("rssi = %d dBm, want -70", got)
+	}
+
+	// Without a channel id block the reading sits where the old fixed offsets
+	// never looked, which is the other half of the same regression.
+	bare := broadcast(EXT_FLAG_RSSI, RSSI_MEASUREMENT_TYPE_DBM, 0xBA, 0x14)
+	bareRssi, ok := bare.RssiInfo()
+	if !ok {
+		t.Fatal("no rssi reported for a message whose rssi block leads")
+	}
+	if got := bareRssi.Value(); got != -70 {
+		t.Errorf("rssi = %d dBm, want -70", got)
+	}
+
+	// A measurement type we do not know has an unknown width, so there is
+	// nothing to report and nothing behind it can be located either.
+	unknown := broadcast(EXT_FLAG_CHANNEL_ID|EXT_FLAG_RSSI, append(channelId(), 0x40, 0xBA, 0x14)...)
+	if _, ok := unknown.RssiInfo(); ok {
+		t.Error("reported a reading from an rssi block of an unknown measurement type")
 	}
 
 	// An AGC measurement carries a threshold offset and a register, so there is

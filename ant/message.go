@@ -195,7 +195,15 @@ func (p BroadcastMessage) extendedBlocks() (channelId, rssi, timestamp []byte) {
 		if len(rest) == 0 {
 			return
 		}
-		rssi = take(rssiBlockSize(rest[0]))
+		size, known := rssiBlockSize(rest[0])
+		// A measurement type we do not know is a block of unknown width, which
+		// makes everything behind it unreachable rather than shifted: guessing
+		// dBm here would hand RxTimestamp two bytes of somebody else's block and
+		// they would look like a perfectly good reading.
+		if !known {
+			return
+		}
+		rssi = take(size)
 	}
 	if flag&EXT_FLAG_TIMESTAMP != 0 {
 		timestamp = take(extTimestampSize)
@@ -203,11 +211,14 @@ func (p BroadcastMessage) extendedBlocks() (channelId, rssi, timestamp []byte) {
 	return
 }
 
-func rssiBlockSize(measurementType byte) int {
-	if measurementType == RSSI_MEASUREMENT_TYPE_AGC {
-		return extRssiAgcSize
+func rssiBlockSize(measurementType byte) (int, bool) {
+	switch measurementType {
+	case RSSI_MEASUREMENT_TYPE_DBM:
+		return extRssiDbmSize, true
+	case RSSI_MEASUREMENT_TYPE_AGC:
+		return extRssiAgcSize, true
 	}
-	return extRssiDbmSize
+	return 0, false
 }
 
 // RssiInfo reports the dBm reading, if the dongle sent one. An AGC measurement
