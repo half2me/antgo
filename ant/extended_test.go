@@ -13,6 +13,14 @@ func broadcast(flag byte, ext ...byte) BroadcastMessage {
 	return BroadcastMessage(MakeAntPacket(MESSAGE_TYPE_BROADCAST, data))
 }
 
+// standardBroadcast is what a dongle with extended messages switched off sends:
+// the channel and the payload, ending before the flag byte. Nothing may read
+// one as though a flag were there.
+func standardBroadcast() BroadcastMessage {
+	data := []byte{0x00, 0x10, 0x19, 0xFF, 0x2C, 0x01, 0x64, 0x00, 0x20}
+	return BroadcastMessage(MakeAntPacket(MESSAGE_TYPE_BROADCAST, data))
+}
+
 func channelId() []byte {
 	return []byte{0x1C, 0xBE, DEVICE_TYPE_FE, 0x05}
 }
@@ -92,7 +100,7 @@ func TestRxTimestampIsAbsentRatherThanZero(t *testing.T) {
 			ext:  append(channelId(), RSSI_MEASUREMENT_TYPE_DBM, 0xBA),
 		},
 		{
-			name: "no extended content at all",
+			name: "a flag byte announcing nothing",
 			flag: 0x00,
 		},
 	}
@@ -104,6 +112,16 @@ func TestRxTimestampIsAbsentRatherThanZero(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("no flag byte at all", func(t *testing.T) {
+		msg := standardBroadcast()
+		if ts, ok := msg.RxTimestamp(); ok {
+			t.Errorf("reported a timestamp of %#04X for a standard broadcast", ts)
+		}
+		if _, ok := msg.RssiInfo(); ok {
+			t.Error("reported rssi for a standard broadcast")
+		}
+	})
 }
 
 func TestRssiInfo(t *testing.T) {

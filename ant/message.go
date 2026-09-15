@@ -169,8 +169,14 @@ func (p BroadcastMessage) TransmissionType() byte {
 // register. A block the flag announces but the message is too short to hold
 // comes back nil, along with everything after it.
 func (p BroadcastMessage) extendedBlocks() (channelId, rssi, timestamp []byte) {
-	flag := p.ExtendedFlag()
-	rest := p.ExtendedContent()
+	data := Packet(p).Data()
+	// A standard broadcast is the channel and the payload and stops there, with
+	// no flag byte to read: nothing is announced, so nothing is present.
+	if len(data) <= extFlagIndex {
+		return
+	}
+	flag := data[extFlagIndex]
+	rest := data[extFlagIndex+1:]
 
 	take := func(n int) []byte {
 		if len(rest) < n {

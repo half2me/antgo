@@ -29,6 +29,9 @@ const (
 	RSSI_MEASUREMENT_TYPE_AGC = 0x10
 	RSSI_MEASUREMENT_TYPE_DBM = 0x20
 
+	// The flag byte sits behind the channel number and the 8-byte payload.
+	extFlagIndex = 9
+
 	// Extended block widths, the RSSI ones including their leading type byte.
 	extChannelIdSize = 4
 	extRssiDbmSize   = 3
