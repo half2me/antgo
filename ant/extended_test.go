@@ -26,9 +26,9 @@ func channelId() []byte {
 }
 
 // The RSSI block's width is decided by the measurement type byte leading it, so
-// the timestamp behind it does not sit at a fixed offset. A dBm dongle — the
-// common case — puts it two bytes earlier than an AGC one, and a dongle sending
-// no RSSI at all four bytes earlier again.
+// the timestamp behind it does not sit at a fixed offset. A dBm dongle puts it
+// two bytes earlier than an AGC one, and a dongle sending no RSSI at all four
+// bytes earlier again.
 func TestRxTimestampFollowsTheBlocksInFrontOfIt(t *testing.T) {
 	tests := []struct {
 		name string
