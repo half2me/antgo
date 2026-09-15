@@ -25,6 +25,19 @@ const (
 	EXT_FLAG_RSSI       = 0x40
 	EXT_FLAG_TIMESTAMP  = 0x20
 
+	// Leads the RSSI block and decides its width.
+	RSSI_MEASUREMENT_TYPE_AGC = 0x10
+	RSSI_MEASUREMENT_TYPE_DBM = 0x20
+
+	// The flag byte sits behind the channel number and the 8-byte payload.
+	extFlagIndex = 9
+
+	// Extended block widths, the RSSI ones including their leading type byte.
+	extChannelIdSize = 4
+	extRssiDbmSize   = 3
+	extRssiAgcSize   = 4
+	extTimestampSize = 2
+
 	CHANNEL_TYPE_TWOWAY_RECEIVE  = 0x00
 	CHANNEL_TYPE_TWOWAY_TRANSMIT = 0x10
 	CHANNEL_TYPE_SHARED_RECEIVE  = 0x20
