@@ -12,8 +12,13 @@ type BroadcastMessage Packet
 
 // Rssi is the dongle's signal report. What it carries depends on the
 // measurement type leading it: dBm is a signal strength, AGC is the receiver's
-// own gain state, and neither can be read as the other. Both genuine Dynastream
-// sticks on the bench reported AGC, so neither is the exotic case.
+// own gain state, and neither can be read as the other.
+//
+// Which one a dongle sends is not a detail: every Dynastream stick measured so
+// far sends AGC, and its register does not move. Walking a sensor to the edge of
+// range and out of it changed nothing, then the packets simply stopped. So on
+// that hardware there is no signal strength to be had, and anything wanting one
+// has to count packets instead.
 type Rssi struct {
 	block []byte
 }
@@ -75,9 +80,11 @@ func (r Rssi) Dbm() (value, threshold int8, ok bool) {
 	return int8(r.block[1]), int8(r.block[2]), true
 }
 
-// Agc reports the automatic gain control's threshold offset and register. It is
-// the receiver's gain, not the signal's strength, so it compares across
-// messages from one dongle and not between dongles.
+// Agc reports the automatic gain control's threshold offset and register.
+//
+// Measured constant across the whole usable range on every stick tried, so do
+// not read it as strength, distance or link quality: it is the raw block, for a
+// caller that has a dongle whose gain actually moves.
 func (r Rssi) Agc() (thresholdOffset int8, register uint16, ok bool) {
 	if r.MeasurementType() != RSSI_MEASUREMENT_TYPE_AGC {
 		return 0, 0, false
