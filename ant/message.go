@@ -1,7 +1,6 @@
 package ant
 
 import (
-	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -10,8 +9,18 @@ import (
 
 type Packet []byte
 type BroadcastMessage Packet
+
+// Rssi is the dongle's signal report. What it carries depends on the
+// measurement type leading it: dBm is a signal strength, AGC is the receiver's
+// own gain state, and neither can be read as the other.
+//
+// Which one a dongle sends is not a detail: every Dynastream stick measured so
+// far sends AGC, and its register does not move. Walking a sensor to the edge of
+// range and out of it changed nothing, then the packets simply stopped. So on
+// that hardware there is no signal strength to be had, and anything wanting one
+// has to count packets instead.
 type Rssi struct {
-	measurementType, rssi, threshold byte
+	block []byte
 }
 
 var InvalidChecksumError = errors.New("invalid checksum")
@@ -54,9 +63,33 @@ func ReadMsg(reader io.Reader) (p Packet, err error) {
 	return
 }
 
-func (r Rssi) Value() (v int8) {
-	_ = binary.Read(bytes.NewReader([]byte{r.rssi}), binary.LittleEndian, &v)
-	return
+// MeasurementType is RSSI_MEASUREMENT_TYPE_DBM or RSSI_MEASUREMENT_TYPE_AGC.
+func (r Rssi) MeasurementType() byte {
+	if len(r.block) == 0 {
+		return 0
+	}
+	return r.block[0]
+}
+
+// Dbm reports the signal strength and the threshold it was measured against,
+// which only a dBm measurement carries.
+func (r Rssi) Dbm() (value, threshold int8, ok bool) {
+	if r.MeasurementType() != RSSI_MEASUREMENT_TYPE_DBM {
+		return 0, 0, false
+	}
+	return int8(r.block[1]), int8(r.block[2]), true
+}
+
+// Agc reports the automatic gain control's threshold offset and register.
+//
+// Measured constant across the whole usable range on every stick tried, so do
+// not read it as strength, distance or link quality: it is the raw block, for a
+// caller that has a dongle whose gain actually moves.
+func (r Rssi) Agc() (thresholdOffset int8, register uint16, ok bool) {
+	if r.MeasurementType() != RSSI_MEASUREMENT_TYPE_AGC {
+		return 0, 0, false
+	}
+	return int8(r.block[1]), binary.LittleEndian.Uint16(r.block[2:4]), true
 }
 
 func (p Packet) String() (s string) {
@@ -221,16 +254,14 @@ func rssiBlockSize(measurementType byte) (int, bool) {
 	return 0, false
 }
 
-// RssiInfo reports the dBm reading, if the dongle sent one. An AGC measurement
-// is not one: its bytes are a threshold offset and a register, so reading them
-// as a dBm value would produce a plausible-looking number that is not a signal
-// strength.
+// RssiInfo reports the signal block, if the dongle sent one. Read it through
+// Dbm or Agc, which answer for their own measurement type and refuse the other.
 func (p BroadcastMessage) RssiInfo() (Rssi, bool) {
 	_, rssi, _ := p.extendedBlocks()
-	if rssi == nil || rssi[0] != RSSI_MEASUREMENT_TYPE_DBM {
+	if rssi == nil {
 		return Rssi{}, false
 	}
-	return Rssi{rssi[0], rssi[1], rssi[2]}, true
+	return Rssi{rssi}, true
 }
 
 // RxTimestamp reports when the dongle's own 32768 Hz clock heard the message,

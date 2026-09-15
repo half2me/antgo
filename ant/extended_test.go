@@ -26,9 +26,9 @@ func channelId() []byte {
 }
 
 // The RSSI block's width is decided by the measurement type byte leading it, so
-// the timestamp behind it does not sit at a fixed offset. A dBm dongle — the
-// common case — puts it two bytes earlier than an AGC one, and a dongle sending
-// no RSSI at all four bytes earlier again.
+// the timestamp behind it does not sit at a fixed offset. A dBm dongle puts it
+// two bytes earlier than an AGC one, and a dongle sending no RSSI at all four
+// bytes earlier again.
 func TestRxTimestampFollowsTheBlocksInFrontOfIt(t *testing.T) {
 	tests := []struct {
 		name string
@@ -146,7 +146,7 @@ func TestRxTimestampIsAbsentRatherThanZero(t *testing.T) {
 	})
 }
 
-func TestRssiInfo(t *testing.T) {
+func TestRssiInfoDbm(t *testing.T) {
 	dbm := broadcast(
 		EXT_FLAG_CHANNEL_ID|EXT_FLAG_RSSI|EXT_FLAG_TIMESTAMP,
 		append(channelId(), RSSI_MEASUREMENT_TYPE_DBM, 0xBA, 0x14, 0x11, 0x22)...,
@@ -155,8 +155,17 @@ func TestRssiInfo(t *testing.T) {
 	if !ok {
 		t.Fatal("no rssi reported for a message carrying a dBm reading")
 	}
-	if got := rssi.Value(); got != -70 {
-		t.Errorf("rssi = %d dBm, want -70", got)
+	value, threshold, ok := rssi.Dbm()
+	if !ok {
+		t.Fatal("a dBm block did not report a dBm reading")
+	}
+	if value != -70 || threshold != 20 {
+		t.Errorf("rssi = %d dBm, threshold %d, want -70 and 20", value, threshold)
+	}
+	// The gain state of a receiver that reports strength directly is not a
+	// thing to hand back, however convenient the bytes would be.
+	if _, _, ok := rssi.Agc(); ok {
+		t.Error("a dBm block reported an AGC reading")
 	}
 
 	// Without a channel id block the reading sits where the old fixed offsets
@@ -166,10 +175,43 @@ func TestRssiInfo(t *testing.T) {
 	if !ok {
 		t.Fatal("no rssi reported for a message whose rssi block leads")
 	}
-	if got := bareRssi.Value(); got != -70 {
-		t.Errorf("rssi = %d dBm, want -70", got)
+	if value, _, _ := bareRssi.Dbm(); value != -70 {
+		t.Errorf("rssi = %d dBm, want -70", value)
+	}
+}
+
+// Both genuine Dynastream sticks on the bench reported AGC, so this is the
+// reading real hardware actually produces; the bytes here are theirs.
+func TestRssiInfoAgc(t *testing.T) {
+	agc := broadcast(
+		EXT_FLAG_CHANNEL_ID|EXT_FLAG_RSSI|EXT_FLAG_TIMESTAMP,
+		append(channelId(), RSSI_MEASUREMENT_TYPE_AGC, 0x00, 0x68, 0x00, 0x1B, 0x2A)...,
+	)
+	rssi, ok := agc.RssiInfo()
+	if !ok {
+		t.Fatal("no rssi reported for a message carrying an AGC measurement")
+	}
+	offset, register, ok := rssi.Agc()
+	if !ok {
+		t.Fatal("an AGC block did not report an AGC reading")
+	}
+	if offset != 0 || register != 104 {
+		t.Errorf("agc offset = %d, register = %d, want 0 and 104", offset, register)
+	}
+	// An AGC block's bytes are a threshold offset and a register, so reading
+	// them as a signal strength would produce a plausible number that is not one.
+	if _, _, ok := rssi.Dbm(); ok {
+		t.Error("an AGC block reported a dBm reading")
 	}
 
+	// The block behind it is still located correctly, which is what the width
+	// is for.
+	if ts, ok := agc.RxTimestamp(); !ok || ts != 0x2A1B {
+		t.Errorf("timestamp = %#04X (ok=%v), want 0x2A1B", ts, ok)
+	}
+}
+
+func TestRssiInfoAbsent(t *testing.T) {
 	// A measurement type we do not know has an unknown width, so there is
 	// nothing to report and nothing behind it can be located either.
 	unknown := broadcast(EXT_FLAG_CHANNEL_ID|EXT_FLAG_RSSI, append(channelId(), 0x40, 0xBA, 0x14)...)
@@ -177,19 +219,19 @@ func TestRssiInfo(t *testing.T) {
 		t.Error("reported a reading from an rssi block of an unknown measurement type")
 	}
 
-	// An AGC measurement carries a threshold offset and a register, so there is
-	// no dBm reading to report.
-	agc := broadcast(
-		EXT_FLAG_CHANNEL_ID|EXT_FLAG_RSSI,
-		append(channelId(), RSSI_MEASUREMENT_TYPE_AGC, 0xBA, 0x14, 0x03)...,
-	)
-	if _, ok := agc.RssiInfo(); ok {
-		t.Error("reported an AGC measurement as a dBm reading")
-	}
-
 	none := broadcast(EXT_FLAG_CHANNEL_ID, channelId()...)
 	if _, ok := none.RssiInfo(); ok {
 		t.Error("reported rssi for a message that carries none")
+	}
+
+	// The zero value answers rather than panicking, since that is what a caller
+	// who ignored the second return gets.
+	var zero Rssi
+	if _, _, ok := zero.Dbm(); ok {
+		t.Error("the zero value reported a dBm reading")
+	}
+	if _, _, ok := zero.Agc(); ok {
+		t.Error("the zero value reported an AGC reading")
 	}
 }
 
