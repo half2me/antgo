@@ -161,19 +161,69 @@ func (p BroadcastMessage) TransmissionType() byte {
 	return p.ExtendedContent()[3]
 }
 
-func (p BroadcastMessage) RssiInfo() Rssi {
-	ex := p.ExtendedContent()
+// extendedBlocks splits the extended content into the blocks the flag byte
+// announces. They appear in this order and each is optional, so a block's
+// offset depends on which ones precede it — and the RSSI block's width is not
+// fixed either: the measurement type byte leading it decides whether it carries
+// a dBm reading and a threshold, or a threshold offset and a 16-bit AGC
+// register. A block the flag announces but the message is too short to hold
+// comes back nil, along with everything after it.
+func (p BroadcastMessage) extendedBlocks() (channelId, rssi, timestamp []byte) {
+	flag := p.ExtendedFlag()
+	rest := p.ExtendedContent()
 
-	return Rssi{
-		ex[4],
-		ex[5],
-		ex[6],
+	take := func(n int) []byte {
+		if len(rest) < n {
+			rest = nil
+			return nil
+		}
+		block := rest[:n]
+		rest = rest[n:]
+		return block
 	}
+
+	if flag&EXT_FLAG_CHANNEL_ID != 0 {
+		channelId = take(extChannelIdSize)
+	}
+	if flag&EXT_FLAG_RSSI != 0 {
+		if len(rest) == 0 {
+			return
+		}
+		rssi = take(rssiBlockSize(rest[0]))
+	}
+	if flag&EXT_FLAG_TIMESTAMP != 0 {
+		timestamp = take(extTimestampSize)
+	}
+	return
 }
 
-func (p BroadcastMessage) RxTimestamp() (ts uint16) {
-	_ = binary.Read(bytes.NewReader(p.ExtendedContent()[8:]), binary.LittleEndian, &ts)
-	return
+func rssiBlockSize(measurementType byte) int {
+	if measurementType == RSSI_MEASUREMENT_TYPE_AGC {
+		return extRssiAgcSize
+	}
+	return extRssiDbmSize
+}
+
+// RssiInfo reports the dBm reading, if the dongle sent one. An AGC measurement
+// is not one: its bytes are a threshold offset and a register, so reading them
+// as a dBm value would produce a plausible-looking number that is not a signal
+// strength.
+func (p BroadcastMessage) RssiInfo() (Rssi, bool) {
+	_, rssi, _ := p.extendedBlocks()
+	if rssi == nil || rssi[0] != RSSI_MEASUREMENT_TYPE_DBM {
+		return Rssi{}, false
+	}
+	return Rssi{rssi[0], rssi[1], rssi[2]}, true
+}
+
+// RxTimestamp reports when the dongle's own 32768 Hz clock heard the message,
+// if it sent one. The counter is 16 bits, so it wraps every two seconds.
+func (p BroadcastMessage) RxTimestamp() (uint16, bool) {
+	_, _, timestamp := p.extendedBlocks()
+	if timestamp == nil {
+		return 0, false
+	}
+	return binary.LittleEndian.Uint16(timestamp), true
 }
 
 func MakeAntPacket(messageType byte, content []byte) Packet {
